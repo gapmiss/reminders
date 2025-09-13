@@ -1,0 +1,10 @@
+{
+	"id": "reminders",
+	"name": "Reminders",
+	"version": "1.0.0",
+	"minAppVersion": "1.1.0",
+	"description": "",
+	"author": "@gapmiss",
+	"authorUrl": "https://github.com/gapmiss",
+	"isDesktopOnly": false
+}
