@@ -120,12 +120,24 @@ export class Scheduler {
             // Skip completed reminders
             if (reminder.completed) return false;
 
-            // Skip snoozed reminders that haven't expired yet
-            if (reminder.snoozedUntil && window.moment(reminder.snoozedUntil).isAfter(now)) return false;
+            // Determine the effective due time - snoozedUntil takes precedence over datetime
+            let effectiveTime;
+            if (reminder.snoozedUntil) {
+                const snoozeTime = window.moment(reminder.snoozedUntil);
+                if (snoozeTime.isAfter(now)) {
+                    // Still snoozed, skip this reminder
+                    return false;
+                } else {
+                    // Snooze expired, use snooze time as the effective due time
+                    effectiveTime = snoozeTime;
+                }
+            } else {
+                // No snooze, use original datetime
+                effectiveTime = window.moment(reminder.datetime);
+            }
 
-            // Check if reminder time falls within the next 5 minutes
-            const reminderTime = window.moment(reminder.datetime);
-            return reminderTime.isBetween(now, fiveMinutesFromNow);
+            // Check if effective time falls within the next 5 minutes
+            return effectiveTime.isBetween(now, fiveMinutesFromNow);
         });
     }
 
