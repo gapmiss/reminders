@@ -123,14 +123,8 @@ export class Scheduler {
             // Determine the effective due time - snoozedUntil takes precedence over datetime
             let effectiveTime;
             if (reminder.snoozedUntil) {
-                const snoozeTime = window.moment(reminder.snoozedUntil);
-                if (snoozeTime.isAfter(now)) {
-                    // Still snoozed, skip this reminder
-                    return false;
-                } else {
-                    // Snooze expired, use snooze time as the effective due time
-                    effectiveTime = snoozeTime;
-                }
+                // For snoozed reminders, the effective due time is the snooze expiration time
+                effectiveTime = window.moment(reminder.snoozedUntil);
             } else {
                 // No snooze, use original datetime
                 effectiveTime = window.moment(reminder.datetime);
@@ -151,7 +145,7 @@ export class Scheduler {
 
         // Debug logging if enabled (shows check frequency and timing)
         if (this.plugin.settings.showDebugLog) {
-            console.log(`High-frequency check #${this.checkCount} at ${new Date().toISOString()}`);
+            console.log(`${this.hasUpcomingReminders() ? 'High-frequency' : 'Low-frequency'} check #${this.checkCount} at ${new Date().toISOString()}`);
         }
 
         try {
