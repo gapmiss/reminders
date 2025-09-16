@@ -163,25 +163,26 @@ export class Scheduler {
                 // Skip completed reminders
                 if (reminder.completed) return false;
 
-                // Handle snoozed reminders - snoozedUntil is the sole source of truth
+                // Determine effective due time - snoozedUntil takes precedence over datetime
+                let effectiveTime;
                 if (reminder.snoozedUntil) {
-                    const snoozeExpired = window.moment(reminder.snoozedUntil).isBefore(now);
-                    if (snoozeExpired) {
-                        // Snooze has expired, clear it and allow the reminder to trigger
-                        // Remove from processed set so it can trigger again
-                        this.processedReminders.delete(reminder.id);
-                        // Clear the snooze time asynchronously (don't wait for it)
-                        this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
-                        // Continue to check if reminder is due
-                    } else {
+                    const snoozeTime = window.moment(reminder.snoozedUntil);
+                    if (snoozeTime.isSameOrAfter(now)) {
                         // Still snoozed, skip this reminder entirely
                         return false;
+                    } else {
+                        // Snooze has expired, clear it and use snooze time as effective due time
+                        this.processedReminders.delete(reminder.id);
+                        this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
+                        effectiveTime = snoozeTime;
                     }
+                } else {
+                    // No snooze, use original datetime
+                    effectiveTime = window.moment(reminder.datetime);
                 }
 
-                // Precise timing check to determine if reminder is due
-                const reminderTime = window.moment(reminder.datetime);
-                const secondsDiff = reminderTime.diff(now, 'seconds');
+                // Precise timing check using effective due time
+                const secondsDiff = effectiveTime.diff(now, 'seconds');
 
                 // Trigger if time has passed or within next 30 seconds
                 // The 30-second window ensures we don't miss reminders due to check timing
