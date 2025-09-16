@@ -1,37 +1,68 @@
 import { type App, Modal } from "obsidian";
 import { type Reminder } from "./reminderModal";
 
+/**
+ * Confirmation dialog for deleting reminders.
+ * This modal prevents accidental deletions by requiring explicit user confirmation.
+ * Shows a preview of the reminder being deleted and warns about irreversibility.
+ *
+ * Key features:
+ * - Shows reminder preview (message, time, snooze status)
+ * - Clear warning about permanent deletion
+ * - Focuses cancel button by default for safety
+ * - Executes callback only on explicit confirmation
+ */
 export class ConfirmDeleteModal extends Modal {
-    private reminder: Reminder;
-    private onConfirm: () => void;
+    private reminder: Reminder;       // The reminder to be deleted
+    private onConfirm: () => void;   // Callback function to execute if user confirms deletion
 
+    /**
+     * Constructor for the delete confirmation modal.
+     *
+     * @param app - Obsidian app instance
+     * @param reminder - The reminder that will be deleted
+     * @param onConfirm - Function to call if user confirms deletion
+     */
     constructor(app: App, reminder: Reminder, onConfirm: () => void) {
         super(app);
         this.reminder = reminder;
         this.onConfirm = onConfirm;
     }
 
+    /**
+     * Called when the modal is opened.
+     * Builds the confirmation dialog interface.
+     */
     onOpen() {
         const { contentEl } = this;
+        // Clear any existing content
         contentEl.empty();
+        // Add CSS class for styling
         contentEl.addClass('confirm-delete-modal');
 
-        // Title
+        // Main title
         contentEl.createEl('h2', { text: 'Delete Reminder' });
 
-        // Message
+        // Message section containing question, preview, and warning
         const messageEl = contentEl.createDiv({ cls: 'confirm-message' });
+
+        // Confirmation question
         messageEl.createEl('p', { text: 'Are you sure you want to delete this reminder?' });
 
+        // Preview of the reminder being deleted
+        // This helps users confirm they're deleting the right reminder
         const reminderPreview = messageEl.createDiv({ cls: 'reminder-preview' });
+        // Show the reminder message prominently
         reminderPreview.createEl('strong', { text: this.reminder.message });
 
+        // Show the reminder date/time
         const timeStr = window.moment(this.reminder.datetime).format('MMM D, YYYY h:mm A');
         reminderPreview.createEl('div', {
             text: timeStr,
             cls: 'reminder-time'
         });
 
+        // Show snooze status if applicable
         if (this.reminder.snoozedUntil) {
             const snoozeUntil = `${window.moment(this.reminder.snoozedUntil).format('MMM D, h:mm A')}`;
             const snoozeSpan = reminderPreview.createSpan({
@@ -40,33 +71,43 @@ export class ConfirmDeleteModal extends Modal {
             });
         }
 
-        // Warning
+        // Warning about permanence
         messageEl.createEl('p', {
             text: 'This action cannot be undone.',
             cls: 'warning-text'
         });
 
-        // Buttons
+        // Action buttons
         const buttonDiv = contentEl.createDiv({ cls: 'confirm-buttons' });
 
+        // Cancel button - closes modal without doing anything
         const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
         cancelBtn.addEventListener('click', () => this.close());
 
+        // Delete button - performs the actual deletion
         const deleteBtn = buttonDiv.createEl('button', {
             text: 'Delete',
-            cls: 'mod-warning'
+            cls: 'mod-warning'  // Obsidian's warning button style (usually red)
         });
         deleteBtn.addEventListener('click', () => {
+            // Execute the deletion callback
             this.onConfirm();
+            // Close the modal
             this.close();
         });
 
-        // Focus cancel button by default
+        // Focus the cancel button by default for safety
+        // This prevents accidental deletions if user presses Enter quickly
         setTimeout(() => cancelBtn.focus(), 100);
     }
 
+    /**
+     * Called when the modal is closed.
+     * Cleans up the modal content.
+     */
     onClose() {
         const { contentEl } = this;
+        // Clear the content to free up memory
         contentEl.empty();
     }
 }
