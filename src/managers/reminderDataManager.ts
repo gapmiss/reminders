@@ -1,60 +1,11 @@
 import ReminderPlugin from "../main";
 import { Reminder } from "../modals/reminderModal";
 
-export interface ReminderSettings {
-	scanInterval: number; // milliseconds
-	showSystemNotification: boolean;
-	showObsidianNotice: boolean;
-	notificationSound: boolean;
-	defaultPriority: 'low' | 'normal' | 'high' | 'urgent';
-}
-
-interface PluginData {
-	reminders: Reminder[];
-	settings: ReminderSettings;
-}
-
 export class ReminderDataManager {
     private plugin: ReminderPlugin;
-    private data: PluginData;
-    private saveTimeout?: NodeJS.Timeout;
 
     constructor(plugin: ReminderPlugin) {
         this.plugin = plugin;
-    }
-
-    async loadData(): Promise<void> {
-        const defaultData: PluginData = {
-            reminders: [],
-            settings: {
-                scanInterval: 15000,
-                showSystemNotification: true,
-                showObsidianNotice: true,
-                notificationSound: false,
-                defaultPriority: 'normal'
-            }
-        };
-
-        this.data = Object.assign(defaultData, await this.plugin.loadData());
-    }
-
-    async saveData(immediate = false): Promise<void> {
-        if (immediate) {
-            if (this.saveTimeout) {
-                clearTimeout(this.saveTimeout);
-                this.saveTimeout = undefined;
-            }
-            await this.plugin.saveData(this.data);
-        } else {
-            if (this.saveTimeout) {
-                clearTimeout(this.saveTimeout);
-            }
-
-            this.saveTimeout = setTimeout(async () => {
-                await this.plugin.saveData(this.data);
-                this.saveTimeout = undefined;
-            }, 1000);
-        }
     }
 
     async createReminder(reminderData: Partial<Reminder>): Promise<Reminder> {
@@ -62,7 +13,7 @@ export class ReminderDataManager {
             id: this.generateId(),
             message: reminderData.message || '',
             datetime: reminderData.datetime || window.moment().add(1, 'hour').toISOString(),
-            priority: reminderData.priority || this.data.settings.defaultPriority,
+            priority: reminderData.priority || this.plugin.settings.defaultPriority,
             category: reminderData.category || '',
             sourceNote: reminderData.sourceNote,
             sourceLine: reminderData.sourceLine,
@@ -72,37 +23,38 @@ export class ReminderDataManager {
             updated: window.moment().toISOString()
         };
 
-        this.data.reminders.push(reminder);
-        await this.saveData();
+        this.plugin.settings.reminders.push(reminder);
+        await this.plugin.saveSettings();
         return reminder;
     }
 
     async updateReminder(id: string, updates: Partial<Reminder>): Promise<Reminder | null> {
-        const index = this.data.reminders.findIndex(r => r.id === id);
+        const index = this.plugin.settings.reminders.findIndex((r) => r.id === id);
         if (index === -1) return null;
 
-        const reminder = this.data.reminders[index];
+        const reminder = this.plugin.settings.reminders[index];
         Object.assign(reminder, updates, {
             updated: window.moment().toISOString()
         });
 
-        await this.saveData();
+        await this.plugin.saveSettings();
         return reminder;
     }
 
     async deleteReminder(id: string): Promise<boolean> {
-        const index = this.data.reminders.findIndex(r => r.id === id);
+        const index = this.plugin.settings.reminders.findIndex((r) => r.id === id);
         if (index === -1) return false;
 
-        this.data.reminders.splice(index, 1);
-        await this.saveData();
+        this.plugin.settings.reminders.splice(index, 1);
+        await this.plugin.saveSettings();
         return true;
     }
 
     async completeReminder(id: string): Promise<Reminder | null> {
         const result = await this.updateReminder(id, {
             completed: true,
-            completedAt: window.moment().toISOString()
+            completedAt: window.moment().toISOString(),
+            snoozedUntil: undefined
         });
 
         // Refresh the sidebar view when completing from Notice
@@ -131,12 +83,12 @@ export class ReminderDataManager {
     }
 
     findReminder(id: string): Reminder | undefined {
-        return this.data.reminders.find(r => r.id === id);
+        return this.plugin.settings.reminders.find(r => r.id === id);
     }
 
     getPendingReminders(): Reminder[] {
         const now = window.moment();
-        return this.data.reminders
+        return this.plugin.settings.reminders
             .filter(r =>
                 !r.completed &&
                 window.moment(r.datetime).isBefore(now) &&
@@ -147,7 +99,7 @@ export class ReminderDataManager {
 
     getSnoozedReminders(): Reminder[] {
         const now = window.moment();
-        return this.data.reminders
+        return this.plugin.settings.reminders
             .filter(r =>
                 !r.completed &&
                 r.snoozedUntil &&
@@ -158,7 +110,7 @@ export class ReminderDataManager {
 
     getUpcomingReminders(limit = 10): Reminder[] {
         const now = window.moment();
-        return this.data.reminders
+        return this.plugin.settings.reminders
             .filter(r =>
                 !r.completed &&
                 window.moment(r.datetime).isAfter(now) &&
@@ -169,7 +121,7 @@ export class ReminderDataManager {
     }
 
     getRemindersByNote(notePath: string): Reminder[] {
-        return this.data.reminders
+        return this.plugin.settings.reminders
             .filter(r => r.sourceNote === notePath)
             .sort((a, b) => window.moment(a.datetime).diff(window.moment(b.datetime)));
     }
@@ -179,21 +131,12 @@ export class ReminderDataManager {
     }
 
     get reminders(): Reminder[] {
-        return this.data.reminders;
-    }
-
-    get settings(): ReminderSettings {
-        return this.data.settings;
-    }
-
-    async updateSettings(newSettings: Partial<ReminderSettings>): Promise<void> {
-        Object.assign(this.data.settings, newSettings);
-        await this.saveData();
+        return this.plugin.settings.reminders;
     }
 
     getStatistics() {
         const now = window.moment();
-        const reminders = this.data.reminders;
+        const reminders = this.plugin.settings.reminders;
 
         return {
             total: reminders.length,
@@ -211,5 +154,81 @@ export class ReminderDataManager {
                 window.moment(r.datetime).isBefore(now.clone().add(24, 'hours'))
             ).length
         };
+    }
+}
+
+export class ReminderTimeUpdater {
+    private intervalId: number | null = null;
+    private reminders: any[] = [];
+    private timeSpanElements: HTMLSpanElement[] = [];
+
+    constructor() {
+        this.startAutoUpdate();
+    }
+
+    // Add a reminder and its corresponding span element
+    addReminder(reminder: any, timeSpanElement: HTMLSpanElement): void {
+        this.reminders.push(reminder);
+        this.timeSpanElements.push(timeSpanElement);
+    }
+
+    // Remove a reminder by index
+    removeReminder(index: number): void {
+        this.reminders.splice(index, 1);
+        this.timeSpanElements.splice(index, 1);
+    }
+
+    // Clear all reminders
+    clearAll(): void {
+        this.reminders = [];
+        this.timeSpanElements = [];
+    }
+
+    // Start the auto-update timer
+    startAutoUpdate(): void {
+        if (this.intervalId) return; // Already running
+
+        this.intervalId = window.setInterval(() => {
+            this.updateAll();
+        }, 5000); // Update every 30 seconds
+    }
+
+    // Stop the auto-update timer
+    stopAutoUpdate(): void {
+        if (this.intervalId) {
+            window.clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+    }
+
+    // Update all reminder times
+    private updateAll(): void {
+        this.updateAllReminderTimes(this.reminders, this.timeSpanElements);
+    }
+
+    updateReminderTime(reminder: any, timeSpanElement: HTMLSpanElement, isSnoozed: boolean): void {
+        if (isSnoozed) {
+            const timeStr = window.moment(reminder.snoozedUntil).format('MMM D, h:mm A');
+            const relativeTime = window.moment(reminder.snoozedUntil).fromNow();
+            timeSpanElement.textContent = `⏰ Snoozed until ${timeStr} (${relativeTime})`;
+        } else {
+            const timeStr = window.moment(reminder.datetime).format('MMM D, h:mm A');
+            const relativeTime = window.moment(reminder.datetime).fromNow();
+            timeSpanElement.textContent = `${timeStr} (${relativeTime})`;
+        }
+    }
+
+    updateAllReminderTimes(reminders: any[], timeSpanElements: HTMLSpanElement[]): void {
+        reminders.forEach((reminder, index) => {
+            if (timeSpanElements[index]) {
+                this.updateReminderTime(reminder, timeSpanElements[index], timeSpanElements[index].className === 'reminder-snoozed');
+            }
+        });
+    }
+
+    // Cleanup method - call this when plugin is disabled or view is destroyed
+    destroy(): void {
+        this.stopAutoUpdate();
+        this.clearAll();
     }
 }

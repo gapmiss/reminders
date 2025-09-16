@@ -32,6 +32,14 @@ export class ConfirmDeleteModal extends Modal {
             cls: 'reminder-time'
         });
 
+        if (this.reminder.snoozedUntil) {
+            const snoozeUntil = `${window.moment(this.reminder.snoozedUntil).format('MMM D, h:mm A')}`;
+            const snoozeSpan = reminderPreview.createSpan({
+                text: `⏰ Snoozed until ${snoozeUntil}`,
+                cls: 'reminder-snoozed'
+            });
+        }
+
         // Warning
         messageEl.createEl('p', {
             text: 'This action cannot be undone.',

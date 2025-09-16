@@ -1,11 +1,5 @@
-import {
-	Plugin,
-	Notice,
-	Menu,
-	TFile,
-	MarkdownView,
-	Editor
-} from 'obsidian';
+import { Plugin, Notice, Menu, TFile, MarkdownView, Editor } from 'obsidian';
+import { RemindersSettings, DEFAULT_SETTINGS, RemindersSettingTab } from "./settings";
 import { ReminderModal, type Reminder } from "./modals/reminderModal";
 import { ReminderSidebarView } from "./view";
 import { ReminderDataManager } from "./managers/reminderDataManager";
@@ -17,10 +11,14 @@ export default class ReminderPlugin extends Plugin {
 	notificationService!: NotificationService;
 	scheduler!: Scheduler;
 	sidebarView?: ReminderSidebarView;
+	settings: RemindersSettings;
 
 	async onload() {
+		await this.loadSettings();
+
+		this.addSettingTab(new RemindersSettingTab(this.app, this));
+
 		this.dataManager = new ReminderDataManager(this);
-		await this.dataManager.loadData();
 
 		this.notificationService = new NotificationService(this);
 		this.scheduler = new Scheduler(this, this.dataManager, this.notificationService);
@@ -48,22 +46,17 @@ export default class ReminderPlugin extends Plugin {
 
 		this.registerEvent(
 			this.app.workspace.on('file-menu', (menu, file) => {
-				if (file instanceof TFile && file.extension === 'md') {
-					this.addFileContextMenu(menu, file);
-				}
+				if (file instanceof TFile && file.extension === 'md') this.addFileContextMenu(menu, file);
 			})
 		);
 
 		// Start scheduler
 		await this.scheduler.start();
-
-		console.log('Reminder Plugin loaded successfully');
 	}
 
 	async onunload() {
 		// Stop scheduler (intervals will be automatically cleared by Obsidian)
 		this.scheduler.stop();
-		await this.dataManager.saveData(true);
 	}
 
 	private addEditorContextMenu(menu: Menu, editor: Editor, view: MarkdownView) {
@@ -119,6 +112,7 @@ export default class ReminderPlugin extends Plugin {
 	async openReminderModal(context?: Partial<Reminder>) {
 		const modal = new ReminderModal(
 			this.app,
+			this,
 			(reminder, isEdit) => this.handleReminderSubmission(reminder, isEdit),
 			context
 		);
@@ -184,5 +178,13 @@ export default class ReminderPlugin extends Plugin {
 			console.error('Failed to save reminder:', error);
 			new Notice(`Failed to ${isEdit ? 'update' : 'create'} reminder`);
 		}
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
 	}
 }

@@ -1,5 +1,5 @@
-import { type App, Modal, MarkdownView, Setting, TFile, Notice } from "obsidian";
-// import ReminderPlugin from "../main";
+import { type App, Modal, MarkdownView, Setting, TFile, FuzzySuggestModal, Notice } from "obsidian";
+import ReminderPlugin from "../main";
 
 export interface Reminder {
     id: string;
@@ -21,20 +21,23 @@ export class ReminderModal extends Modal {
     private reminder: Partial<Reminder>;
     private onSubmit: (reminder: Reminder, isEdit: boolean) => void;
     private isEdit: boolean;
+    plugin: ReminderPlugin;
 
     constructor(
         app: App,
+        plugin: ReminderPlugin,
         onSubmit: (reminder: Reminder, isEdit: boolean) => void,
         existingReminder?: Partial<Reminder>
     ) {
         super(app);
+        this.plugin = plugin;
         this.onSubmit = onSubmit;
         this.isEdit = !!existingReminder?.id;
 
         this.reminder = existingReminder || {
             message: '',
             datetime: window.moment().add(1, 'hour').format('YYYY-MM-DDTHH:mm'),
-            priority: 'normal',
+            priority: this.plugin.settings.defaultPriority,
             category: ''
         };
 
@@ -98,8 +101,10 @@ export class ReminderModal extends Modal {
         quickTimeDiv.createEl('span', { text: 'Quick times: ' });
 
         const quickTimes = [
-            { label: '1 hour', hours: 1 },
-            { label: '4 hours', hours: 4 },
+            { label: '15 mins', minutes: 15 },
+            { label: '30 mins', minutes: 30 },
+            { label: '1 hr', hours: 1 },
+            { label: '4 hrs', hours: 4 },
             { label: 'Tomorrow 9am', time: window.moment().add(1, 'day').hour(9).minute(0) }
         ];
 
@@ -109,6 +114,8 @@ export class ReminderModal extends Modal {
                 let newTime;
                 if (qt.hours) {
                     newTime = window.moment().add(qt.hours, 'hours');
+                } else if (qt.minutes) {
+                    newTime = window.moment().add(qt.minutes, 'minutes');
                 } else {
                     newTime = qt.time as moment.Moment;
                 }
@@ -144,27 +151,96 @@ export class ReminderModal extends Modal {
                     });
             });
 
-        // Source note display
-        if (this.reminder.sourceNote) {
-            new Setting(contentEl)
-                .setName('Linked to note')
-                .setDesc(this.reminder.sourceNote)
-                .addButton(button => {
-                    button.setButtonText('Open note')
+        let toggleComponent: any; // Store reference to toggle component
+        new Setting(contentEl)
+            .setName('Link to note')
+            .setDesc(this.reminder.sourceNote || 'No note linked')
+            .addToggle(toggle => {
+                toggleComponent = toggle; // Store reference
+                toggle
+                    .setValue(!!this.reminder.sourceNote)
+                    .onChange(async (value) => {
+                        if (value) {
+                            // If toggling on, open file picker
+                            new FileSuggestModal(this.app, (selectedFile) => {
+                                if (selectedFile) {
+                                    this.reminder.sourceNote = selectedFile.path;
+                                    // Update the description to show the linked note
+                                    const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
+                                    if (setting) {
+                                        setting.textContent = selectedFile.path;
+                                    }
+                                    new Notice(`Linked reminder to: ${selectedFile.basename}`);
+                                } else {
+                                    // User cancelled, turn toggle back off
+                                    toggle.setValue(false);
+                                }
+                            }).open();
+                        } else {
+                            // If toggling off, remove the link
+                            this.reminder.sourceNote = '';
+                            // Update the description
+                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
+                            if (setting) {
+                                setting.textContent = 'No note linked';
+                            }
+                            // Save the reminder changes
+                            // await this.saveReminder?.();
+                            new Notice('Unlinked reminder from note');
+                        }
+                    });
+            })
+            .addButton(button => {
+                // Button to open the linked note (only show if note is linked)
+                if (this.reminder.sourceNote) {
+                    button
+                        .setButtonText('Open')
+                        .setTooltip('Open linked note')
+                        .setClass('mod-cta')
                         .onClick(() => {
                             const file = this.app.vault.getAbstractFileByPath(this.reminder.sourceNote!);
                             if (file instanceof TFile) {
                                 this.app.workspace.openLinkText(file.path, '');
+                            } else {
+                                new Notice('Linked file not found');
                             }
                         });
-                });
-        }
+                }
+                else {
+                    button
+                        .setButtonText('Select')
+                        .setTooltip('Select a note to link')
+                        .onClick(async () => {
+                            // Alternative way to open file picker without using toggle
+                            new FileSuggestModal(this.app, async (selectedFile) => {
+                                if (selectedFile) {
+                                    this.reminder.sourceNote = selectedFile.path;
+                                    // Update toggle state and description
+                                    toggleComponent.setValue(true);
+                                    const setting = contentEl.querySelector('.setting-item:last-child .setting-item-description') as HTMLElement;
+                                    if (setting) {
+                                        setting.textContent = selectedFile.path;
+                                    }
+                                    // Update button
+                                    button
+                                        .setButtonText('Open')
+                                        .setTooltip('Open linked note')
+                                        .setClass('mod-cta');
+
+                                    new Notice(`Linked reminder to: ${selectedFile.basename}`);
+                                }
+                            }).open();
+                        });
+                }
+            });
 
         // Action buttons
         const buttonDiv = contentEl.createDiv({ cls: 'reminder-modal-buttons' });
 
         const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });
-        cancelBtn.addEventListener('click', () => this.close());
+        cancelBtn.addEventListener('click', () => {
+            this.close();
+        });
 
         const saveBtn = buttonDiv.createEl('button', {
             text: this.isEdit ? 'Update' : 'Create',
@@ -202,6 +278,30 @@ export class ReminderModal extends Modal {
         }
 
         this.onSubmit(this.reminder as Reminder, this.isEdit);
+        this.close();
+    }
+}
+
+// Custom FileSuggestModal class
+class FileSuggestModal extends FuzzySuggestModal<TFile> {
+    private onSubmit: (file: TFile) => void;
+
+    constructor(app: App, onSubmit: (file: TFile) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+        this.setPlaceholder('Search for a file to link...');
+    }
+
+    getItems(): TFile[] {
+        return this.app.vault.getMarkdownFiles();
+    }
+
+    getItemText(file: TFile): string {
+        return file.path;
+    }
+
+    onChooseItem(file: TFile, evt: MouseEvent | KeyboardEvent): void {
+        this.onSubmit(file);
         this.close();
     }
 }

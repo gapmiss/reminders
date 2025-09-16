@@ -9,8 +9,6 @@ export class Scheduler {
     private isRunning = false;
     private processedReminders = new Set<string>();
     private checkCount = 0;
-    private readonly FAST_CHECK_INTERVAL = 5000; // 5 seconds
-    private readonly SLOW_CHECK_INTERVAL = 30000; // 30 seconds
 
     constructor(
         plugin: ReminderPlugin,
@@ -25,7 +23,7 @@ export class Scheduler {
     async start(): Promise<void> {
         if (this.isRunning) return;
 
-        console.log('Starting high-frequency reminder scheduler');
+        if (this.plugin.settings.showDebugLog) console.log('Starting high-frequency reminder scheduler');
         this.isRunning = true;
         this.checkCount = 0;
 
@@ -35,7 +33,7 @@ export class Scheduler {
     stop(): void {
         if (!this.isRunning) return;
 
-        console.log('Stopping high-frequency scheduler');
+        if (this.plugin.settings.showDebugLog) console.log('Stopping high-frequency scheduler');
         this.isRunning = false;
         this.processedReminders.clear();
     }
@@ -46,8 +44,8 @@ export class Scheduler {
         // Use fast checking (every 5 seconds) when reminders are due soon
         // Use slow checking (every 30 seconds) when no immediate reminders
         const interval = this.hasUpcomingReminders() ?
-            this.FAST_CHECK_INTERVAL :
-            this.SLOW_CHECK_INTERVAL;
+            this.plugin.settings.fastCheckInterval :
+            this.plugin.settings.slowCheckInterval;
 
         setTimeout(async () => {
             if (this.isRunning) {
@@ -73,8 +71,7 @@ export class Scheduler {
     private async checkReminders(): Promise<void> {
         this.checkCount++;
         // const isDetailedCheck = this.checkCount % 15 === 0; // Every 15th check is detailed
-
-        console.log(`High-frequency check #${this.checkCount} at ${new Date().toISOString()}`);
+        if (this.plugin.settings.showDebugLog) console.log(`High-frequency check #${this.checkCount} at ${new Date().toISOString()}`);
 
         try {
             const now = window.moment();
@@ -84,16 +81,16 @@ export class Scheduler {
             const dueReminders = allReminders.filter(reminder => {
                 if (reminder.completed) return false;
 
-                if (reminder.snoozedUntil) {
-                    const snoozeExpired = window.moment(reminder.snoozedUntil).isBefore(now);
-                    // if (snoozeExpired && isDetailedCheck) {
-                    if (snoozeExpired) {
-                        this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
-                        this.processedReminders.delete(reminder.id);
-                        return true;
-                    }
-                    return false;
-                }
+                // if (reminder.snoozedUntil) {
+                //     const snoozeExpired = window.moment(reminder.snoozedUntil).isBefore(now);
+                //     // if (snoozeExpired && isDetailedCheck) {
+                //     if (snoozeExpired) {
+                //         this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
+                //         this.processedReminders.delete(reminder.id);
+                //         return true;
+                //     }
+                //     return false;
+                // }
 
                 // More precise timing check
                 const reminderTime = window.moment(reminder.datetime);
@@ -112,7 +109,7 @@ export class Scheduler {
                     if (exactDiff <= 0) { // Only trigger if actually due
                         await this.notificationService.showReminder(reminder);
                         this.processedReminders.add(reminder.id);
-                        console.log(`Precisely triggered reminder: ${reminder.message}`);
+                        if (this.plugin.settings.showDebugLog) console.log(`Precisely triggered reminder: ${reminder.message}`);
                     }
                 }
             }

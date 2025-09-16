@@ -11,7 +11,8 @@ export class NotificationService {
     }
 
     async showReminder(reminder: Reminder): Promise<void> {
-        const settings = this.plugin.dataManager.settings;
+        // const settings = this.plugin.dataManager.settings;
+        const settings = this.plugin.settings;
 
         if (settings.showObsidianNotice) {
             this.showObsidianNotice(reminder);
@@ -79,7 +80,8 @@ export class NotificationService {
         const notification = new Notification('Obsidian Reminder', {
             body: reminder.message,
             tag: reminder.id,
-            requireInteraction: reminder.priority === 'urgent' || reminder.priority === 'high'
+            // requireInteraction: reminder.priority === 'urgent' || reminder.priority === 'high'
+            requireInteraction: true
         });
 
         notification.onclick = () => {

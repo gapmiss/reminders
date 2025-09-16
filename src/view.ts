@@ -1,13 +1,14 @@
-import {ItemView, WorkspaceLeaf, Notice, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon } from "obsidian";
 import ReminderPlugin from "./main";
 import { Reminder } from "./modals/reminderModal";
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
+import { ReminderTimeUpdater } from "./managers/reminderDataManager";
 
 export class ReminderSidebarView extends ItemView {
     private plugin: ReminderPlugin;
     private currentFilter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed' = 'pending';
-    private refreshInterval?: NodeJS.Timeout;
+    private reminderUpdater: ReminderTimeUpdater;
 
     constructor(leaf: WorkspaceLeaf, plugin: ReminderPlugin) {
         super(leaf);
@@ -27,26 +28,12 @@ export class ReminderSidebarView extends ItemView {
     }
 
     async onOpen() {
+        this.reminderUpdater = new ReminderTimeUpdater();
         this.render();
-        this.startAutoRefresh();
     }
 
     async onClose() {
-        this.stopAutoRefresh();
-    }
-
-    private startAutoRefresh() {
-        // Refresh every 30 seconds to update times
-        this.refreshInterval = setInterval(() => {
-            this.render();
-        }, 30000);
-    }
-
-    private stopAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = undefined;
-        }
+        this.reminderUpdater.destroy();
     }
 
     render() {
@@ -83,21 +70,22 @@ export class ReminderSidebarView extends ItemView {
 
     private createFilterTabs() {
         const tabsEl = this.contentEl.createDiv({ cls: 'reminder-filter-tabs' });
-
         const filters = [
-            { key: 'pending', label: 'Pending' },
-            { key: 'snoozed', label: 'Snoozed' },
-            { key: 'upcoming', label: 'Upcoming' },
-            { key: 'all', label: 'All' },
-            { key: 'completed', label: 'Done' }
+            { key: 'pending', label: 'Pending', icon: 'hourglass' },        // 1. Most urgent - what needs attention now
+            { key: 'upcoming', label: 'Upcoming', icon: 'arrow-up-right' }, // 2. Next priority - what's coming up
+            { key: 'snoozed', label: 'Snoozed', icon: 'bell-off' },     // 3. Temporarily hidden items
+            { key: 'completed', label: 'Done', icon: 'check-circle' }, // 4. Recently finished (for reference)
+            { key: 'all', label: 'All', icon: 'filter' }              // 5. Complete overview (least frequent)
         ];
 
         filters.forEach(filter => {
             const tab = tabsEl.createEl('button', {
-                cls: `filter-tab ${this.currentFilter === filter.key ? 'active' : ''}`
+                cls: `filter-tab ${this.currentFilter === filter.key ? 'active' : ''}`,
+                attr: { 'data-tooltip-position': 'top', 'aria-label': filter.label }
             });
-
-            tab.createSpan({ text: filter.label });
+            let iconSpan = tab.createSpan('filter-icon');
+            setIcon(iconSpan, filter.icon);
+            tab.createSpan({ text: filter.label, cls: 'filter-label' });
             tab.addEventListener('click', () => {
                 this.currentFilter = filter.key as any;
                 this.render();
@@ -110,7 +98,7 @@ export class ReminderSidebarView extends ItemView {
         const statsEl = this.contentEl.createDiv({ cls: 'reminder-stats' });
 
         const statItems = [
-            { label: 'Overdue', value: stats.overdue, cls: 'overdue' },
+            { label: 'Overdue', value: stats.overdue, cls: `overdue${stats.overdue > 0 ? ' warning' : ''}` },
             { label: 'Snoozed', value: stats.snoozed, cls: 'snoozed' },
             { label: 'Today', value: stats.upcoming24h, cls: 'today' },
             { label: 'Total', value: stats.total, cls: 'total' }
@@ -146,21 +134,22 @@ export class ReminderSidebarView extends ItemView {
             cls: `reminder-item priority-${reminder.priority} ${reminder.completed ? 'completed' : ''} ${reminder.snoozedUntil ? 'snoozed' : ''}`
         });
 
-        // Checkbox
-        const checkboxEl = itemEl.createEl('input', { type: 'checkbox' });
-        checkboxEl.checked = reminder.completed;
-        checkboxEl.addEventListener('change', async () => {
-            if (checkboxEl.checked) {
-                await this.plugin.dataManager.completeReminder(reminder.id);
-                new Notice('✅ Reminder completed');
-            } else {
-                await this.plugin.dataManager.updateReminder(reminder.id, {
-                    completed: false,
-                    completedAt: undefined
-                });
-            }
-            this.render();
-        });
+        new Setting(itemEl)
+            .addToggle(toggle => toggle
+                .setValue(reminder.completed)
+                .onChange(async (value) => {
+                    if (value) {
+                        await this.plugin.dataManager.completeReminder(reminder.id);
+                        new Notice('✅ Reminder completed');
+                    } else {
+                        await this.plugin.dataManager.updateReminder(reminder.id, {
+                            completed: false,
+                            completedAt: undefined
+                        });
+                    }
+                    this.render();
+                })
+            );
 
         // Content
         const contentEl = itemEl.createDiv({ cls: 'reminder-content' });
@@ -174,14 +163,18 @@ export class ReminderSidebarView extends ItemView {
 
         const timeStr = window.moment(reminder.datetime).format('MMM D, h:mm A');
         const relativeTime = window.moment(reminder.datetime).fromNow();
-        metaEl.createSpan({ text: `${timeStr} (${relativeTime})` });
+        const timeSpan = metaEl.createSpan({ cls: 'time-span', text: `${timeStr} (${relativeTime})` });
+        this.reminderUpdater.addReminder(reminder, timeSpan);
+
 
         if (reminder.snoozedUntil) {
             const snoozeRelativeTime = window.moment(reminder.snoozedUntil).fromNow();
-            metaEl.createSpan({
-                text: `⏰ Snoozed until ${window.moment(reminder.snoozedUntil).format('MMM D, h:mm A')} (${snoozeRelativeTime})`,
+            const snoozeUntil = `${window.moment(reminder.snoozedUntil).format('MMM D, h:mm A')} (${snoozeRelativeTime})`;
+            const snoozeSpan = metaEl.createSpan({
+                text: `⏰ Snoozed until ${snoozeUntil}`,
                 cls: 'reminder-snoozed'
             });
+            this.reminderUpdater.addReminder(reminder, snoozeSpan);
         }
 
         if (reminder.category) {
@@ -204,7 +197,7 @@ export class ReminderSidebarView extends ItemView {
         // Actions
         const actionsEl = itemEl.createDiv({ cls: 'reminder-item-actions' });
 
-        if (!reminder.completed) {
+        if (!reminder.completed && window.moment(reminder.datetime).isBefore(window.moment())) {
             const snoozeBtn = actionsEl.createEl('button', {
                 cls: 'clickable-icon',
                 attr: { 'aria-label': 'Snooze' }
@@ -216,6 +209,9 @@ export class ReminderSidebarView extends ItemView {
                     reminder,
                     this.plugin,
                     async (minutes: number) => {
+                        if (reminder.datetime) {
+
+                        }
                         const snoozeUntil = window.moment().add(minutes, 'minutes').toISOString();
                         await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
                         const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
