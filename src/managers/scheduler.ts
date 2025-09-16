@@ -151,17 +151,21 @@ export class Scheduler {
                 // Skip completed reminders
                 if (reminder.completed) return false;
 
-                // Commented out snooze logic - this might be handled elsewhere
-                // The logic would check if snooze time has expired and reset the reminder
-                // if (reminder.snoozedUntil) {
-                //     const snoozeExpired = window.moment(reminder.snoozedUntil).isBefore(now);
-                //     if (snoozeExpired) {
-                //         this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
-                //         this.processedReminders.delete(reminder.id);
-                //         return true;
-                //     }
-                //     return false;
-                // }
+                // Handle snoozed reminders - snoozedUntil is the sole source of truth
+                if (reminder.snoozedUntil) {
+                    const snoozeExpired = window.moment(reminder.snoozedUntil).isBefore(now);
+                    if (snoozeExpired) {
+                        // Snooze has expired, clear it and allow the reminder to trigger
+                        // Remove from processed set so it can trigger again
+                        this.processedReminders.delete(reminder.id);
+                        // Clear the snooze time asynchronously (don't wait for it)
+                        this.dataManager.updateReminder(reminder.id, { snoozedUntil: undefined });
+                        // Continue to check if reminder is due
+                    } else {
+                        // Still snoozed, skip this reminder entirely
+                        return false;
+                    }
+                }
 
                 // Precise timing check to determine if reminder is due
                 const reminderTime = window.moment(reminder.datetime);
