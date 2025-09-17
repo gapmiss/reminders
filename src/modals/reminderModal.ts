@@ -70,7 +70,10 @@ export class ReminderModal extends Modal {
 
         // For existing reminders, convert ISO datetime to format compatible with datetime-local input
         if (existingReminder?.datetime) {
-            this.reminder.datetime = format(new Date(existingReminder.datetime), 'yyyy-MM-dd\'T\'HH:mm');
+            const existingDate = new Date(existingReminder.datetime);
+            if (!isNaN(existingDate.getTime())) {
+                this.reminder.datetime = format(existingDate, 'yyyy-MM-dd\'T\'HH:mm');
+            }
         }
 
         // Auto-populate context if creating a new reminder from the active note

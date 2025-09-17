@@ -381,14 +381,32 @@ export class ReminderTimeUpdater {
     updateReminderTime(reminder: any, timeSpanElement: HTMLSpanElement, isSnoozed: boolean): void {
         if (isSnoozed) {
             // Show snooze information with clock emoji
-            const timeStr = format(new Date(reminder.snoozedUntil), 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
-            const relativeTime = formatDistanceToNow(new Date(reminder.snoozedUntil), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "in 5 minutes"
-            timeSpanElement.textContent = `⏰ Snoozed until ${timeStr} (${relativeTime})`;
+            if (reminder.snoozedUntil) {
+                const snoozedDate = new Date(reminder.snoozedUntil);
+                if (!isNaN(snoozedDate.getTime())) {
+                    const timeStr = format(snoozedDate, 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
+                    const relativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "in 5 minutes"
+                    timeSpanElement.textContent = `⏰ Snoozed until ${timeStr} (${relativeTime})`;
+                } else {
+                    timeSpanElement.textContent = '⏰ Snooze time invalid';
+                }
+            } else {
+                timeSpanElement.textContent = '⏰ Not snoozed';
+            }
         } else {
             // Show regular reminder time
-            const timeStr = format(new Date(reminder.datetime), 'MMM d, h:mm a');      // "Jan 15, 2:30 pm"
-            const relativeTime = formatDistanceToNow(new Date(reminder.datetime), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');               // "5 minutes ago"
-            timeSpanElement.textContent = `${timeStr} (${relativeTime})`;
+            if (reminder.datetime) {
+                const reminderDate = new Date(reminder.datetime);
+                if (!isNaN(reminderDate.getTime())) {
+                    const timeStr = format(reminderDate, 'MMM d, h:mm a');      // "Jan 15, 2:30 pm"
+                    const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');               // "5 minutes ago"
+                    timeSpanElement.textContent = `${timeStr} (${relativeTime})`;
+                } else {
+                    timeSpanElement.textContent = 'Invalid date';
+                }
+            } else {
+                timeSpanElement.textContent = 'No date set';
+            }
         }
     }
 

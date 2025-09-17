@@ -57,7 +57,15 @@ export class ConfirmDeleteModal extends Modal {
         reminderPreview.createEl('strong', { text: this.reminder.message });
 
         // Show the reminder date/time
-        const timeStr = format(new Date(this.reminder.datetime), 'MMM d, yyyy h:mm a');
+        let timeStr = 'No date set';
+        if (this.reminder.datetime) {
+            const reminderDate = new Date(this.reminder.datetime);
+            if (!isNaN(reminderDate.getTime())) {
+                timeStr = format(reminderDate, 'MMM d, yyyy h:mm a');
+            } else {
+                timeStr = 'Invalid date';
+            }
+        }
         reminderPreview.createEl('div', {
             text: timeStr,
             cls: 'reminder-time'
@@ -65,11 +73,14 @@ export class ConfirmDeleteModal extends Modal {
 
         // Show snooze status if applicable
         if (this.reminder.snoozedUntil) {
-            const snoozeUntil = `${format(new Date(this.reminder.snoozedUntil), 'MMM d, h:mm a')}`;
-            const snoozeSpan = reminderPreview.createSpan({
-                text: `⏰ Snoozed until ${snoozeUntil}`,
-                cls: 'reminder-snoozed'
-            });
+            const snoozedDate = new Date(this.reminder.snoozedUntil);
+            if (!isNaN(snoozedDate.getTime())) {
+                const snoozeUntil = `${format(snoozedDate, 'MMM d, h:mm a')}`;
+                const snoozeSpan = reminderPreview.createSpan({
+                    text: `⏰ Snoozed until ${snoozeUntil}`,
+                    cls: 'reminder-snoozed'
+                });
+            }
         }
 
         // Warning about permanence

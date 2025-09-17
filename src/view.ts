@@ -305,22 +305,34 @@ export class ReminderSidebarView extends ItemView {
         const metaEl = contentEl.createDiv({ cls: 'reminder-meta' });
 
         // Display the reminder time in both absolute and relative formats
-        const timeStr = format(new Date(reminder.datetime), 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
-        const relativeTime = formatDistanceToNow(new Date(reminder.datetime), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "5 minutes ago"
-        const timeSpan = metaEl.createSpan({ cls: 'time-span', text: `${timeStr} (${relativeTime})` });
+        let timeDisplayText = 'No date set';
+        if (reminder.datetime) {
+            const reminderDate = new Date(reminder.datetime);
+            if (!isNaN(reminderDate.getTime())) {
+                const timeStr = format(reminderDate, 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
+                const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "5 minutes ago"
+                timeDisplayText = `${timeStr} (${relativeTime})`;
+            } else {
+                timeDisplayText = 'Invalid date';
+            }
+        }
+        const timeSpan = metaEl.createSpan({ cls: 'time-span', text: timeDisplayText });
         // Register this element for automatic time updates
         this.reminderUpdater.addReminder(reminder, timeSpan);
 
         // If reminder is snoozed, show when it will reappear
         if (reminder.snoozedUntil) {
-            const snoozeRelativeTime = formatDistanceToNow(new Date(reminder.snoozedUntil), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');
-            const snoozeUntil = `${format(new Date(reminder.snoozedUntil), 'MMM d, h:mm a')} (${snoozeRelativeTime})`;
-            const snoozeSpan = metaEl.createSpan({
-                text: `⏰ Snoozed until ${snoozeUntil}`,
-                cls: 'reminder-snoozed'
-            });
-            // Also register snooze time for automatic updates
-            this.reminderUpdater.addReminder(reminder, snoozeSpan);
+            const snoozedDate = new Date(reminder.snoozedUntil);
+            if (!isNaN(snoozedDate.getTime())) {
+                const snoozeRelativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');
+                const snoozeUntil = `${format(snoozedDate, 'MMM d, h:mm a')} (${snoozeRelativeTime})`;
+                const snoozeSpan = metaEl.createSpan({
+                    text: `⏰ Snoozed until ${snoozeUntil}`,
+                    cls: 'reminder-snoozed'
+                });
+                // Also register snooze time for automatic updates
+                this.reminderUpdater.addReminder(reminder, snoozeSpan);
+            }
         }
 
         // Show category if one is assigned
