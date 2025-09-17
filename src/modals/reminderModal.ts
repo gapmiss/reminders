@@ -209,6 +209,9 @@ export class ReminderModal extends Modal {
         // Note linking section
         // This allows users to associate reminders with specific notes for context
         let toggleComponent: any; // Store reference to toggle component for later access
+        let buttonComponent: any; // Store reference to button component for later updates
+        let isUpdatingToggle = false; // Prevent recursive onChange calls
+        let wasLinkedBeforeToggle = false; // Track if file was linked before toggle change
         new Setting(contentEl)
             .setName('Link to note')
             .setDesc(this.reminder.sourceNote || 'No note linked')  // Show current link status
@@ -217,6 +220,12 @@ export class ReminderModal extends Modal {
                 toggle
                     .setValue(!!this.reminder.sourceNote)  // Set toggle based on whether note is linked
                     .onChange(async (value) => {
+                        // Prevent recursive calls when programmatically setting toggle value
+                        if (isUpdatingToggle) return;
+
+                        // Store the previous state before making changes
+                        wasLinkedBeforeToggle = !!this.reminder.sourceNote;
+
                         if (value) {
                             // User wants to link a note - open file picker
                             new FileSuggestModal(this.app, (selectedFile) => {
@@ -228,10 +237,23 @@ export class ReminderModal extends Modal {
                                     if (setting) {
                                         setting.textContent = selectedFile.path;
                                     }
+                                    // Ensure toggle stays on since file was selected
+                                    isUpdatingToggle = true;
+                                    toggle.setValue(true);
+                                    isUpdatingToggle = false;
+                                    // Update button to "Open" mode
+                                    if (buttonComponent) {
+                                        buttonComponent
+                                            .setButtonText('Open')
+                                            .setTooltip('Open linked note')
+                                            .setClass('mod-cta');
+                                    }
                                     new Notice(`Linked reminder to: ${selectedFile.basename}`);
                                 } else {
-                                    // User cancelled file selection, turn toggle back off
-                                    toggle.setValue(false);
+                                    // User cancelled file selection, restore previous state
+                                    isUpdatingToggle = true;
+                                    toggle.setValue(wasLinkedBeforeToggle);
+                                    isUpdatingToggle = false;
                                 }
                             }).open();
                         } else {
@@ -242,11 +264,54 @@ export class ReminderModal extends Modal {
                             if (setting) {
                                 setting.textContent = 'No note linked';
                             }
+                            // Update button to "Select" mode
+                            if (buttonComponent) {
+                                buttonComponent
+                                    .setButtonText('Select')
+                                    .setTooltip('Select a note to link');
+                                // Remove the mod-cta class by accessing the button element directly
+                                buttonComponent.buttonEl?.removeClass('mod-cta');
+                                // Update click handler to open file picker instead of trying to open a file
+                                buttonComponent.onClick(() => {
+                                    new FileSuggestModal(this.app, (selectedFile) => {
+                                        if (selectedFile) {
+                                            // User selected a file
+                                            this.reminder.sourceNote = selectedFile.path;
+                                            // Update toggle state to reflect the link
+                                            isUpdatingToggle = true;
+                                            toggleComponent.setValue(true);
+                                            isUpdatingToggle = false;
+                                            // Update the description text
+                                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
+                                            if (setting) {
+                                                setting.textContent = selectedFile.path;
+                                            }
+                                            // Update button back to "Open" mode
+                                            buttonComponent
+                                                .setButtonText('Open')
+                                                .setTooltip('Open linked note')
+                                                .setClass('mod-cta');
+                                            // Update click handler back to open file
+                                            buttonComponent.onClick(() => {
+                                                const file = this.app.vault.getAbstractFileByPath(this.reminder.sourceNote!);
+                                                if (file instanceof TFile) {
+                                                    this.app.workspace.openLinkText(file.path, '');
+                                                } else {
+                                                    new Notice('Linked file not found');
+                                                }
+                                            });
+                                            new Notice(`Linked reminder to: ${selectedFile.basename}`);
+                                        }
+                                        // Note: if selectedFile is null (cancelled), do nothing - keep toggle off
+                                    }).open();
+                                });
+                            }
                             new Notice('Unlinked reminder from note');
                         }
                     });
             })
             .addButton(button => {
+                buttonComponent = button; // Store reference for updates in toggle callback
                 // Add a button that changes behavior based on link status
                 if (this.reminder.sourceNote) {
                     // If note is linked, show "Open" button to navigate to it
@@ -375,15 +440,16 @@ export class ReminderModal extends Modal {
  * - Callback-based result handling
  */
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
-    private onSubmit: (file: TFile) => void;  // Callback function for when user selects a file
+    private onSubmit: (file: TFile | null) => void;  // Callback function for when user selects a file or cancels
+    private hasSelected: boolean = false;  // Track if user actually selected a file
 
     /**
      * Constructor for the file suggestion modal.
      *
      * @param app - Obsidian app instance
-     * @param onSubmit - Callback function called when user selects a file
+     * @param onSubmit - Callback function called when user selects a file or cancels (null)
      */
-    constructor(app: App, onSubmit: (file: TFile) => void) {
+    constructor(app: App, onSubmit: (file: TFile | null) => void) {
         super(app);
         this.onSubmit = onSubmit;
         this.setPlaceholder('Search for a file to link...');
@@ -418,7 +484,19 @@ class FileSuggestModal extends FuzzySuggestModal<TFile> {
      * @param evt - The triggering mouse or keyboard event
      */
     onChooseItem(file: TFile, evt: MouseEvent | KeyboardEvent): void {
-        this.onSubmit(file);  // Call the callback with selected file
-        this.close();         // Close the modal
+        this.hasSelected = true;  // Mark that user selected a file
+        this.onSubmit(file);      // Call the callback with selected file
+        this.close();             // Close the modal
+    }
+
+    /**
+     * Called when the modal is closed.
+     * If no file was selected, call the callback with null to indicate cancellation.
+     */
+    onClose(): void {
+        super.onClose();
+        if (!this.hasSelected) {
+            this.onSubmit(null);  // Call callback with null to indicate cancellation
+        }
     }
 }
