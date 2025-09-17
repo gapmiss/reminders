@@ -1,7 +1,7 @@
 import ReminderPlugin from "../main";
 import { ReminderDataManager } from "./reminderDataManager";
 import { NotificationService } from "./notificationService";
-import { addMinutes, isAfter, isBefore, differenceInSeconds } from 'date-fns';
+import { addMinutes, isAfter, differenceInSeconds } from 'date-fns';
 
 /**
  * Scheduler service that monitors reminders and triggers notifications at the right time.
