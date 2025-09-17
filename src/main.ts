@@ -1,6 +1,8 @@
 import { Plugin, Notice, Menu, TFile, MarkdownView, Editor } from 'obsidian';
-import { RemindersSettings, DEFAULT_SETTINGS, RemindersSettingTab } from "./settings";
-import { ReminderModal, type Reminder } from "./modals/reminderModal";
+import { DEFAULT_SETTINGS, RemindersSettingTab, type RemindersSettings } from "./settings";
+import { ReminderModal } from "./modals/reminderModal";
+import type { Reminder } from './types';
+import { ICONS, UI_CONFIG, DATE_FORMATS } from './constants';
 import { ReminderSidebarView } from "./view";
 import { ReminderDataManager } from "./managers/reminderDataManager";
 import { NotificationService } from "./managers/notificationService";
@@ -59,7 +61,7 @@ export default class ReminderPlugin extends Plugin {
 
 		// Add the bell icon to Obsidian's ribbon (left sidebar)
 		// When clicked, it opens the reminder sidebar
-		this.addRibbonIcon('concierge-bell', 'Reminders', () => { this.openReminderSidebar() });
+		this.addRibbonIcon(ICONS.BELL, 'Reminders', () => { this.openReminderSidebar() });
 
 		// Register keyboard commands that users can trigger
 		// Each command has an ID, display name, callback function, and optional hotkeys
@@ -125,7 +127,7 @@ export default class ReminderPlugin extends Plugin {
 		if (selection) {
 			menu.addItem((item) => {
 				item.setTitle('Create reminder from selection')
-					.setIcon('concierge-bell')  // Use bell icon to match our plugin theme
+					.setIcon(ICONS.BELL)  // Use bell icon to match our plugin theme
 					.onClick(() => {
 						// Create a reminder using the selected text as the message
 						this.createReminderFromSelection(editor);
@@ -137,7 +139,7 @@ export default class ReminderPlugin extends Plugin {
 		// This is useful for creating location-based reminders
 		menu.addItem((item) => {
 			item.setTitle('Create reminder here')
-				.setIcon('concierge-bell')
+				.setIcon(ICONS.BELL)
 				.onClick(() => {
 					// Get the current cursor position to link the reminder to this location
 					const cursor = editor.getCursor();
@@ -164,7 +166,7 @@ export default class ReminderPlugin extends Plugin {
 		// Always add option to create a new reminder for this file
 		menu.addItem((item) => {
 			item.setTitle('Create reminder for this note')
-				.setIcon('concierge-bell')
+				.setIcon(ICONS.BELL)
 				.onClick(() => {
 					this.openReminderModal({
 						sourceNote: file.path  // Pre-link the reminder to this file
@@ -253,7 +255,7 @@ export default class ReminderPlugin extends Plugin {
 			message: `Reminder: ${selection}`,                               // Use selected text as the message
 			sourceNote: view?.file?.path,                                   // Link to current file
 			sourceLine: cursor.line,                                        // Link to current line
-			datetime: format(addHours(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm')  // Default to 1 hour from now
+			datetime: format(addHours(new Date(), UI_CONFIG.DEFAULT_HOURS_AHEAD), DATE_FORMATS.DATETIME_LOCAL)  // Default to 1 hour from now
 		});
 	}
 

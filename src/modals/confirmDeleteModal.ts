@@ -1,6 +1,7 @@
 import { type App, Modal } from "obsidian";
-import { type Reminder } from "./reminderModal";
+import type { Reminder } from '../types';
 import { format } from 'date-fns';
+import { UI_CONFIG, DATE_FORMATS } from '../constants';
 
 /**
  * Confirmation dialog for deleting reminders.
@@ -61,7 +62,7 @@ export class ConfirmDeleteModal extends Modal {
         if (this.reminder.datetime) {
             const reminderDate = new Date(this.reminder.datetime);
             if (!isNaN(reminderDate.getTime())) {
-                timeStr = format(reminderDate, 'MMM d, yyyy h:mm a');
+                timeStr = format(reminderDate, DATE_FORMATS.TIME_LONG);
             } else {
                 timeStr = 'Invalid date';
             }
@@ -75,7 +76,7 @@ export class ConfirmDeleteModal extends Modal {
         if (this.reminder.snoozedUntil) {
             const snoozedDate = new Date(this.reminder.snoozedUntil);
             if (!isNaN(snoozedDate.getTime())) {
-                const snoozeUntil = `${format(snoozedDate, 'MMM d, h:mm a')}`;
+                const snoozeUntil = `${format(snoozedDate, DATE_FORMATS.TIME_SHORT)}`;
                 const snoozeSpan = reminderPreview.createSpan({
                     text: `⏰ Snoozed until ${snoozeUntil}`,
                     cls: 'reminder-snoozed'
@@ -110,7 +111,7 @@ export class ConfirmDeleteModal extends Modal {
 
         // Focus the cancel button by default for safety
         // This prevents accidental deletions if user presses Enter quickly
-        setTimeout(() => cancelBtn.focus(), 100);
+        setTimeout(() => cancelBtn.focus(), UI_CONFIG.FOCUS_DELAY);
     }
 
     /**

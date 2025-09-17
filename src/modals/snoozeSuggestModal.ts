@@ -1,35 +1,7 @@
 import { type App, SuggestModal } from "obsidian";
 import ReminderPlugin from "../main";
-
-/**
- * Local interface for reminder data.
- * This duplicates the main Reminder interface to avoid circular imports.
- * In a larger project, this would likely be moved to a shared types file.
- */
-interface Reminder {
-    id: string;
-    message: string;
-    datetime: string; // ISO string
-    priority: 'low' | 'normal' | 'high' | 'urgent';
-    category: string;
-    sourceNote?: string;
-    sourceLine?: number;
-    completed: boolean;
-    completedAt?: string;
-    snoozedUntil?: string;
-    snoozeCount: number;
-    created: string;
-    updated: string;
-}
-
-/**
- * Interface for snooze duration options.
- * Used both for preset options and custom user input.
- */
-interface SnoozeOption {
-    label: string;    // Display text shown to user
-    minutes: number;  // Duration in minutes
-}
+import type { Reminder, SnoozeOption } from '../types';
+import { DEFAULT_SNOOZE_PRESETS, UI_CONFIG } from '../constants';
 
 /**
  * Modal for selecting how long to snooze a reminder.
@@ -49,14 +21,7 @@ export class SnoozeSuggestModal extends SuggestModal<SnoozeOption> {
 
     // Predefined snooze duration options
     // These cover common use cases from quick (1 min) to long-term (24 hours)
-    private presetOptions: SnoozeOption[] = [
-        { label: '1 minute', minutes: 1 },           // For quick testing or very short delays
-        { label: '5 minutes', minutes: 5 },          // Short break
-        { label: '15 minutes', minutes: 15 },        // Standard short snooze
-        { label: '30 minutes', minutes: 30 },        // Half hour delay
-        { label: '1 hour', minutes: 60 },           // One hour delay
-        { label: '24 hours', minutes: 24 * 60 }     // Next day (1440 minutes)
-    ];
+    private presetOptions: SnoozeOption[] = [...DEFAULT_SNOOZE_PRESETS];
 
     /**
      * Constructor for the snooze suggestion modal.

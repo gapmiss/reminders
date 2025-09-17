@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 import ReminderPlugin from "../main";
-import { Reminder } from "../modals/reminderModal";
+import type { Reminder } from '../types';
 import { SnoozeSuggestModal } from "../modals/snoozeSuggestModal";
 import { addMinutes } from 'date-fns';
 

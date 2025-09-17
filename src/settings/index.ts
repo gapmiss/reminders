@@ -1,19 +1,9 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import { Reminder } from "../modals/reminderModal";
+import type { RemindersSettings, ReminderPriority } from '../types';
+import { SCHEDULER_CONFIG, PRIORITY_CONFIG } from '../constants';
 
-/**
- * Interface defining all configurable settings for the Reminders plugin.
- * These settings are persisted to Obsidian's data storage and can be modified by users.
- */
-export interface RemindersSettings {
-    reminders: Reminder[];                               // Array of all reminder data (legacy storage method)
-    fastCheckInterval: number;                           // Milliseconds between checks when reminders are due soon
-    slowCheckInterval: number;                           // Milliseconds between checks when no reminders are due soon
-    showDebugLog: boolean;                              // Whether to output debug information to console
-    showSystemNotification: boolean;                     // Whether to show OS-level notifications
-    showObsidianNotice: boolean;                        // Whether to show Obsidian's in-app notice popup
-    defaultPriority: 'low' | 'normal' | 'high' | 'urgent'; // Priority level assigned to new reminders by default
-}
+// Re-export for backward compatibility
+export type { RemindersSettings } from '../types';
 
 /**
  * Default configuration values for the plugin.
@@ -21,13 +11,13 @@ export interface RemindersSettings {
  * All timing values are in milliseconds.
  */
 export const DEFAULT_SETTINGS: RemindersSettings = {
-    reminders: [],                    // Start with no reminders
-    fastCheckInterval: 5000,          // Check every 5 seconds when reminders are due soon
-    slowCheckInterval: 30000,         // Check every 30 seconds when no urgent reminders
-    showDebugLog: false,             // Don't show debug info by default (performance)
-    showSystemNotification: true,     // Enable OS notifications by default
-    showObsidianNotice: true,        // Enable Obsidian notices by default
-    defaultPriority: 'normal'        // Most reminders are normal priority
+    reminders: [],                                        // Start with no reminders
+    fastCheckInterval: SCHEDULER_CONFIG.FAST_CHECK_INTERVAL,     // Check every 5 seconds when reminders are due soon
+    slowCheckInterval: SCHEDULER_CONFIG.SLOW_CHECK_INTERVAL,     // Check every 30 seconds when no urgent reminders
+    showDebugLog: false,                                 // Don't show debug info by default (performance)
+    showSystemNotification: true,                        // Enable OS notifications by default
+    showObsidianNotice: true,                           // Enable Obsidian notices by default
+    defaultPriority: 'normal'                           // Most reminders are normal priority
 };
 
 /**
@@ -116,11 +106,11 @@ export class RemindersSettingTab extends PluginSettingTab {
             .setDesc("Default priority level for new reminders.")
             .addDropdown((dropdown) =>
                 dropdown
-                    // Add all available priority options
-                    .addOption("low", "Low")        // Least urgent
-                    .addOption("normal", "Normal")  // Standard priority (most common)
-                    .addOption("high", "High")      // Important but not critical
-                    .addOption("urgent", "Urgent")  // Needs immediate attention
+                    // Add all available priority options using constants
+                    .addOption("low", PRIORITY_CONFIG.low.label)        // Least urgent
+                    .addOption("normal", PRIORITY_CONFIG.normal.label)  // Standard priority (most common)
+                    .addOption("high", PRIORITY_CONFIG.high.label)      // Important but not critical
+                    .addOption("urgent", PRIORITY_CONFIG.urgent.label)  // Needs immediate attention
                     .setValue(this.plugin.settings.defaultPriority) // Set current selection
                     .onChange(async (value) => {
                         // Update setting when user changes selection

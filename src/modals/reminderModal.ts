@@ -1,26 +1,8 @@
 import { type App, Modal, MarkdownView, Setting, TFile, FuzzySuggestModal, Notice } from "obsidian";
 import ReminderPlugin from "../main";
 import { format, addHours, addMinutes, addDays, setHours, setMinutes, isBefore } from 'date-fns';
-
-/**
- * Main interface defining the structure of a reminder.
- * This is the core data type used throughout the plugin.
- */
-export interface Reminder {
-    id: string;                                           // Unique identifier for the reminder
-    message: string;                                      // The reminder text shown to the user
-    datetime: string;                                     // When to trigger (ISO string format)
-    priority: 'low' | 'normal' | 'high' | 'urgent';     // Importance level
-    category: string;                                     // Optional organization category
-    sourceNote?: string;                                  // Optional link to source note file path
-    sourceLine?: number;                                  // Optional link to specific line in note
-    completed: boolean;                                   // Whether the reminder has been finished
-    completedAt?: string;                                 // When it was completed (ISO string)
-    snoozedUntil?: string;                               // When snoozed reminder should reappear (ISO string)
-    snoozeCount: number;                                  // How many times this reminder has been snoozed
-    created: string;                                      // When reminder was created (ISO string)
-    updated: string;                                      // When reminder was last modified (ISO string)
-}
+import type { Reminder } from '../types';
+import { UI_CONFIG, DATE_FORMATS, PRIORITY_CONFIG, CSS_CLASSES, QUICK_TIME_PRESETS } from '../constants';
 
 /**
  * Modal dialog for creating and editing reminders.
@@ -67,7 +49,7 @@ export class ReminderModal extends Modal {
         // Initialize form data with existing data or sensible defaults
         this.formData = existingReminder ? { ...existingReminder } : {
             message: '',                                                                    // Empty message for user to fill
-            datetime: format(addHours(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm'),         // Default to 1 hour from now
+            datetime: format(addHours(new Date(), UI_CONFIG.DEFAULT_HOURS_AHEAD), DATE_FORMATS.DATETIME_LOCAL),         // Default to 1 hour from now
             priority: this.plugin.settings.defaultPriority,                               // Use user's default priority setting
             category: ''                                                                   // Empty category
         };
@@ -76,7 +58,7 @@ export class ReminderModal extends Modal {
         if (existingReminder?.datetime) {
             const existingDate = new Date(existingReminder.datetime);
             if (!isNaN(existingDate.getTime())) {
-                this.formData.datetime = format(existingDate, 'yyyy-MM-dd\'T\'HH:mm');
+                this.formData.datetime = format(existingDate, DATE_FORMATS.DATETIME_LOCAL);
             }
         }
 
@@ -111,7 +93,7 @@ export class ReminderModal extends Modal {
         // Clear any existing content
         contentEl.empty();
         // Add CSS class for styling
-        contentEl.addClass('reminder-modal');
+        contentEl.addClass(CSS_CLASSES.MODAL);
 
         // Main title - changes based on edit vs create mode
         contentEl.createEl('h2', {
@@ -131,8 +113,8 @@ export class ReminderModal extends Modal {
                     });
 
                 // Add CSS class for styling and focus the field
-                text.inputEl.addClass('reminder-textarea')
-                setTimeout(() => text.inputEl.focus(), 100);  // Focus after modal opens
+                text.inputEl.addClass(CSS_CLASSES.TEXTAREA)
+                setTimeout(() => text.inputEl.focus(), UI_CONFIG.FOCUS_DELAY);  // Focus after modal opens
             });
 
         // Date and time picker
@@ -151,16 +133,13 @@ export class ReminderModal extends Modal {
 
         // Quick time selection buttons
         // These provide shortcuts for common reminder times to save users from manual input
-        const quickTimeDiv = contentEl.createDiv({ cls: 'quick-time-buttons' });
+        const quickTimeDiv = contentEl.createDiv({ cls: CSS_CLASSES.QUICK_TIME_BUTTONS });
         quickTimeDiv.createEl('span', { text: 'Quick times: ' });
 
         // Define common time presets that users frequently need
         const quickTimes = [
-            { label: '15 mins', minutes: 15 },     // Short-term reminders
-            { label: '30 mins', minutes: 30 },     // Half hour delay
-            { label: '1 hr', hours: 1 },          // One hour from now
-            { label: '4 hrs', hours: 4 },         // Later today
-            { label: 'Tomorrow 9am', time: setMinutes(setHours(addDays(new Date(), 1), 9), 0) }  // Next morning
+            ...QUICK_TIME_PRESETS,
+            { label: 'Tomorrow 9am', minutes: 0, time: setMinutes(setHours(addDays(new Date(), 1), 9), 0) }  // Next morning
         ];
 
         // Create a button for each quick time option
@@ -169,18 +148,15 @@ export class ReminderModal extends Modal {
             btn.addEventListener('click', () => {
                 // Calculate the target time based on the button clicked
                 let newTime;
-                if (qt.hours) {
-                    // Add specified hours to current time
-                    newTime = addHours(new Date(), qt.hours);
-                } else if (qt.minutes) {
-                    // Add specified minutes to current time
-                    newTime = addMinutes(new Date(), qt.minutes);
-                } else {
+                if ('time' in qt) {
                     // Use specific time (like "Tomorrow 9am")
                     newTime = qt.time as Date;
+                } else {
+                    // Add specified minutes to current time
+                    newTime = addMinutes(new Date(), qt.minutes);
                 }
                 // Update the form data and refresh the datetime input
-                this.formData.datetime = format(newTime, 'yyyy-MM-dd\'T\'HH:mm');
+                this.formData.datetime = format(newTime, DATE_FORMATS.DATETIME_LOCAL);
                 this.refreshDateTime();
             });
         });
@@ -191,10 +167,10 @@ export class ReminderModal extends Modal {
             .setName('Priority')
             .setDesc('How important is this reminder?')
             .addDropdown(dropdown => {
-                dropdown.addOption('low', '🔵 Low')        // Blue circle - least urgent
-                    .addOption('normal', '⚪ Normal')    // White circle - standard priority
-                    .addOption('high', '🟡 High')        // Yellow circle - important
-                    .addOption('urgent', '🔴 Urgent')      // Red circle - needs immediate attention
+                dropdown.addOption('low', `${PRIORITY_CONFIG.low.icon} ${PRIORITY_CONFIG.low.label}`)        // Blue circle - least urgent
+                    .addOption('normal', `${PRIORITY_CONFIG.normal.icon} ${PRIORITY_CONFIG.normal.label}`)    // White circle - standard priority
+                    .addOption('high', `${PRIORITY_CONFIG.high.icon} ${PRIORITY_CONFIG.high.label}`)        // Yellow circle - important
+                    .addOption('urgent', `${PRIORITY_CONFIG.urgent.icon} ${PRIORITY_CONFIG.urgent.label}`)      // Red circle - needs immediate attention
                     .setValue(this.formData.priority || 'normal')  // Pre-select current priority
                     .onChange(value => {
                         this.formData.priority = value as any;    // Update form data
@@ -369,7 +345,7 @@ export class ReminderModal extends Modal {
             });
 
         // Action buttons at bottom of modal
-        const buttonDiv = contentEl.createDiv({ cls: 'reminder-modal-buttons' });
+        const buttonDiv = contentEl.createDiv({ cls: CSS_CLASSES.MODAL_BUTTONS });
 
         // Cancel button - closes modal without saving
         const cancelBtn = buttonDiv.createEl('button', { text: 'Cancel' });

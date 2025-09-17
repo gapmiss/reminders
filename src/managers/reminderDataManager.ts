@@ -1,6 +1,7 @@
 import ReminderPlugin from "../main";
-import { Reminder } from "../modals/reminderModal";
+import type { Reminder, TrackedReminder, TimeDisplayElement } from '../types';
 import { format, formatDistanceToNow, addHours, addDays, isBefore, isAfter, differenceInMilliseconds } from 'date-fns';
+import { UI_CONFIG, DATE_FORMATS } from '../constants';
 
 /**
  * Data manager responsible for all CRUD operations on reminder data.
@@ -296,7 +297,7 @@ export class ReminderDataManager {
  */
 export class ReminderTimeUpdater {
     private intervalId: number | null = null;     // Timer ID for the update interval
-    private reminders: any[] = [];               // Array of reminder objects to track
+    private reminders: TrackedReminder[] = [];   // Array of reminder objects to track
     private timeSpanElements: HTMLSpanElement[] = []; // Corresponding HTML elements to update
 
     /**
@@ -313,7 +314,7 @@ export class ReminderTimeUpdater {
      * @param reminder - The reminder object containing datetime information
      * @param timeSpanElement - The HTML element that displays the time string
      */
-    addReminder(reminder: any, timeSpanElement: HTMLSpanElement): void {
+    addReminder(reminder: TrackedReminder, timeSpanElement: HTMLSpanElement): void {
         this.reminders.push(reminder);
         this.timeSpanElements.push(timeSpanElement);
     }
@@ -348,7 +349,7 @@ export class ReminderTimeUpdater {
         // Set up interval to update all time displays
         this.intervalId = window.setInterval(() => {
             this.updateAll();
-        }, 5000); // Update every 5 seconds (not 30 as the comment incorrectly stated)
+        }, UI_CONFIG.TIME_UPDATE_INTERVAL); // Update every 5 seconds
     }
 
     /**
@@ -378,13 +379,13 @@ export class ReminderTimeUpdater {
      * @param timeSpanElement - The HTML element to update with new time text
      * @param isSnoozed - Whether to show snooze time instead of reminder time
      */
-    updateReminderTime(reminder: any, timeSpanElement: HTMLSpanElement, isSnoozed: boolean): void {
+    updateReminderTime(reminder: TrackedReminder, timeSpanElement: HTMLSpanElement, isSnoozed: boolean): void {
         if (isSnoozed) {
             // Show snooze information with clock emoji
             if (reminder.snoozedUntil) {
                 const snoozedDate = new Date(reminder.snoozedUntil);
                 if (!isNaN(snoozedDate.getTime())) {
-                    const timeStr = format(snoozedDate, 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
+                    const timeStr = format(snoozedDate, DATE_FORMATS.TIME_SHORT);  // "Jan 15, 2:30 pm"
                     const relativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "in 5 minutes"
                     timeSpanElement.textContent = `⏰ Snoozed until ${timeStr} (${relativeTime})`;
                 } else {
@@ -398,7 +399,7 @@ export class ReminderTimeUpdater {
             if (reminder.datetime) {
                 const reminderDate = new Date(reminder.datetime);
                 if (!isNaN(reminderDate.getTime())) {
-                    const timeStr = format(reminderDate, 'MMM d, h:mm a');      // "Jan 15, 2:30 pm"
+                    const timeStr = format(reminderDate, DATE_FORMATS.TIME_SHORT);      // "Jan 15, 2:30 pm"
                     const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');               // "5 minutes ago"
                     timeSpanElement.textContent = `${timeStr} (${relativeTime})`;
                 } else {
@@ -417,7 +418,7 @@ export class ReminderTimeUpdater {
      * @param reminders - Array of reminder objects
      * @param timeSpanElements - Array of corresponding HTML elements
      */
-    updateAllReminderTimes(reminders: any[], timeSpanElements: HTMLSpanElement[]): void {
+    updateAllReminderTimes(reminders: TrackedReminder[], timeSpanElements: HTMLSpanElement[]): void {
         reminders.forEach((reminder, index) => {
             // Check if the corresponding element still exists
             if (timeSpanElements[index]) {

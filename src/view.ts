@@ -1,6 +1,7 @@
 import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu } from "obsidian";
 import ReminderPlugin from "./main";
-import { Reminder } from "./modals/reminderModal";
+import type { Reminder } from './types';
+import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS } from './constants';
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
 import { ReminderTimeUpdater } from "./managers/reminderDataManager";
@@ -54,7 +55,7 @@ export class ReminderSidebarView extends ItemView {
      * Uses Obsidian's built-in concierge-bell icon.
      */
     getIcon(): string {
-        return 'concierge-bell';
+        return ICONS.BELL;
     }
 
     /**
@@ -103,7 +104,7 @@ export class ReminderSidebarView extends ItemView {
         const headerEl = this.contentEl.createDiv({ cls: 'reminder-sidebar-header' });
 
         const headerIcon = headerEl.createDiv('header-icon');
-        setIcon(headerIcon, 'concierge-bell');
+        setIcon(headerIcon, ICONS.BELL);
 
         // Add the main title
         headerEl.createEl('h6', { text: 'Reminders', cls: 'header-heading' });
@@ -132,20 +133,20 @@ export class ReminderSidebarView extends ItemView {
             const spinner = this.containerEl.createDiv({ cls: 'refresh-spinner' });
 
             // Create SVG element
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('class', 'spinner-icon');
+            const svg = document.createElementNS(SVG_CONFIG.NAMESPACE, 'svg');
+            svg.setAttribute('class', CSS_CLASSES.SPINNER_ICON);
             svg.setAttribute('viewBox', '0 0 24 24');
 
             // Create circle element
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            const circle = document.createElementNS(SVG_CONFIG.NAMESPACE, 'circle');
             circle.setAttribute('cx', '12');
             circle.setAttribute('cy', '12');
-            circle.setAttribute('r', '10');
+            circle.setAttribute('r', SVG_CONFIG.CIRCLE_RADIUS);
             circle.setAttribute('stroke', 'currentColor');
-            circle.setAttribute('stroke-width', '4');
+            circle.setAttribute('stroke-width', SVG_CONFIG.STROKE_WIDTH);
             circle.setAttribute('fill', 'none');
-            circle.setAttribute('stroke-dasharray', '31.416');
-            circle.setAttribute('stroke-dashoffset', '31.416');
+            circle.setAttribute('stroke-dasharray', SVG_CONFIG.DASH_ARRAY);
+            circle.setAttribute('stroke-dashoffset', SVG_CONFIG.DASH_OFFSET);
 
             // Append circle to SVG and SVG to spinner
             svg.appendChild(circle);
@@ -157,7 +158,7 @@ export class ReminderSidebarView extends ItemView {
             // Remove spinner after a short delay
             setTimeout(() => {
                 spinner.remove();
-            }, 600);
+            }, UI_CONFIG.SPINNER_DELAY);
         });
     }
 
@@ -170,13 +171,7 @@ export class ReminderSidebarView extends ItemView {
         const tabsEl = this.contentEl.createDiv({ cls: 'reminder-filter-tabs' });
 
         // Define all available filter options with their display properties
-        const filters = [
-            { key: 'pending', label: 'Pending', icon: 'hourglass' },        // 1. Most urgent - what needs attention now
-            { key: 'upcoming', label: 'Upcoming', icon: 'arrow-up-right' }, // 2. Next priority - what's coming up
-            { key: 'snoozed', label: 'Snoozed', icon: 'bell-off' },     // 3. Temporarily hidden items
-            { key: 'completed', label: 'Done', icon: 'check-circle' }, // 4. Recently finished (for reference)
-            { key: 'all', label: 'All', icon: 'filter' }              // 5. Complete overview (least frequent)
-        ];
+        const filters = FILTER_CONFIG;
 
         // Create a button for each filter option
         filters.forEach(filter => {
@@ -309,7 +304,7 @@ export class ReminderSidebarView extends ItemView {
         if (reminder.datetime) {
             const reminderDate = new Date(reminder.datetime);
             if (!isNaN(reminderDate.getTime())) {
-                const timeStr = format(reminderDate, 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
+                const timeStr = format(reminderDate, DATE_FORMATS.TIME_SHORT);  // "Jan 15, 2:30 pm"
                 const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "5 minutes ago"
                 timeDisplayText = `${timeStr} (${relativeTime})`;
             } else {
@@ -325,7 +320,7 @@ export class ReminderSidebarView extends ItemView {
             const snoozedDate = new Date(reminder.snoozedUntil);
             if (!isNaN(snoozedDate.getTime())) {
                 const snoozeRelativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');
-                const snoozeUntil = `${format(snoozedDate, 'MMM d, h:mm a')} (${snoozeRelativeTime})`;
+                const snoozeUntil = `${format(snoozedDate, DATE_FORMATS.TIME_SHORT)} (${snoozeRelativeTime})`;
                 const snoozeSpan = metaEl.createSpan({
                     text: `⏰ Snoozed until ${snoozeUntil}`,
                     cls: 'reminder-snoozed'
