@@ -5,6 +5,7 @@ import { ReminderSidebarView } from "./view";
 import { ReminderDataManager } from "./managers/reminderDataManager";
 import { NotificationService } from "./managers/notificationService";
 import { Scheduler } from "./managers/scheduler";
+import { format, addHours } from 'date-fns';
 
 /**
  * Main plugin class that extends Obsidian's Plugin base class.
@@ -252,7 +253,7 @@ export default class ReminderPlugin extends Plugin {
 			message: `Reminder: ${selection}`,                               // Use selected text as the message
 			sourceNote: view?.file?.path,                                   // Link to current file
 			sourceLine: cursor.line,                                        // Link to current line
-			datetime: window.moment().add(1, 'hour').format('YYYY-MM-DDTHH:mm')  // Default to 1 hour from now
+			datetime: format(addHours(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm')  // Default to 1 hour from now
 		});
 	}
 

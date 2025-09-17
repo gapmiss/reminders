@@ -1,6 +1,7 @@
 import ReminderPlugin from "../main";
 import { ReminderDataManager } from "./reminderDataManager";
 import { NotificationService } from "./notificationService";
+import { addMinutes, isAfter, isBefore, differenceInSeconds } from 'date-fns';
 
 /**
  * Scheduler service that monitors reminders and triggers notifications at the right time.
@@ -112,8 +113,8 @@ export class Scheduler {
      * @returns True if reminders are due soon, false otherwise
      */
     private hasUpcomingReminders(): boolean {
-        const now = window.moment();
-        const fiveMinutesFromNow = now.clone().add(5, 'minutes');
+        const now = new Date();
+        const fiveMinutesFromNow = addMinutes(now, 5);
 
         // Check if any reminder should trigger in the next 5 minutes
         return this.dataManager.reminders.some(reminder => {
@@ -124,14 +125,14 @@ export class Scheduler {
             let effectiveTime;
             if (reminder.snoozedUntil) {
                 // For snoozed reminders, the effective due time is the snooze expiration time
-                effectiveTime = window.moment(reminder.snoozedUntil);
+                effectiveTime = new Date(reminder.snoozedUntil);
             } else {
                 // No snooze, use original datetime
-                effectiveTime = window.moment(reminder.datetime);
+                effectiveTime = new Date(reminder.datetime);
             }
 
             // Check if effective time falls within the next 5 minutes
-            return effectiveTime.isBetween(now, fiveMinutesFromNow);
+            return effectiveTime >= now && effectiveTime <= fiveMinutesFromNow;
         });
     }
 
@@ -149,7 +150,7 @@ export class Scheduler {
         }
 
         try {
-            const now = window.moment();
+            const now = new Date();
             const allReminders = this.dataManager.reminders;
 
             // Find reminders that should trigger now
@@ -160,8 +161,8 @@ export class Scheduler {
                 // Determine effective due time - snoozedUntil takes precedence over datetime
                 let effectiveTime;
                 if (reminder.snoozedUntil) {
-                    const snoozeTime = window.moment(reminder.snoozedUntil);
-                    if (snoozeTime.isSameOrAfter(now)) {
+                    const snoozeTime = new Date(reminder.snoozedUntil);
+                    if (isAfter(snoozeTime, now) || snoozeTime.getTime() === now.getTime()) {
                         // Still snoozed, skip this reminder entirely
                         return false;
                     } else {
@@ -172,11 +173,11 @@ export class Scheduler {
                     }
                 } else {
                     // No snooze, use original datetime
-                    effectiveTime = window.moment(reminder.datetime);
+                    effectiveTime = new Date(reminder.datetime);
                 }
 
                 // Precise timing check using effective due time
-                const secondsDiff = effectiveTime.diff(now, 'seconds');
+                const secondsDiff = differenceInSeconds(effectiveTime, now);
 
                 // Trigger if time has passed or within next 30 seconds
                 // The 30-second window ensures we don't miss reminders due to check timing
@@ -189,8 +190,8 @@ export class Scheduler {
                 // This prevents duplicate notifications for the same reminder
                 if (!this.processedReminders.has(reminder.id)) {
                     // Double-check timing before triggering (final validation)
-                    const exactTime = window.moment(reminder.datetime);
-                    const exactDiff = exactTime.diff(now, 'seconds');
+                    const exactTime = new Date(reminder.datetime);
+                    const exactDiff = differenceInSeconds(exactTime, now);
 
                     // Only trigger if the reminder is actually due (not early)
                     if (exactDiff <= 0) {

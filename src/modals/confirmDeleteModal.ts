@@ -1,5 +1,6 @@
 import { type App, Modal } from "obsidian";
 import { type Reminder } from "./reminderModal";
+import { format } from 'date-fns';
 
 /**
  * Confirmation dialog for deleting reminders.
@@ -56,7 +57,7 @@ export class ConfirmDeleteModal extends Modal {
         reminderPreview.createEl('strong', { text: this.reminder.message });
 
         // Show the reminder date/time
-        const timeStr = window.moment(this.reminder.datetime).format('MMM D, YYYY h:mm A');
+        const timeStr = format(new Date(this.reminder.datetime), 'MMM d, yyyy h:mm a');
         reminderPreview.createEl('div', {
             text: timeStr,
             cls: 'reminder-time'
@@ -64,7 +65,7 @@ export class ConfirmDeleteModal extends Modal {
 
         // Show snooze status if applicable
         if (this.reminder.snoozedUntil) {
-            const snoozeUntil = `${window.moment(this.reminder.snoozedUntil).format('MMM D, h:mm A')}`;
+            const snoozeUntil = `${format(new Date(this.reminder.snoozedUntil), 'MMM d, h:mm a')}`;
             const snoozeSpan = reminderPreview.createSpan({
                 text: `⏰ Snoozed until ${snoozeUntil}`,
                 cls: 'reminder-snoozed'

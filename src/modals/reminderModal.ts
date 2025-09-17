@@ -1,5 +1,6 @@
 import { type App, Modal, MarkdownView, Setting, TFile, FuzzySuggestModal, Notice } from "obsidian";
 import ReminderPlugin from "../main";
+import { format, addHours, addMinutes, addDays, setHours, setMinutes, isBefore } from 'date-fns';
 
 /**
  * Main interface defining the structure of a reminder.
@@ -62,14 +63,14 @@ export class ReminderModal extends Modal {
         // Initialize reminder data with existing data or sensible defaults
         this.reminder = existingReminder || {
             message: '',                                                                    // Empty message for user to fill
-            datetime: window.moment().add(1, 'hour').format('YYYY-MM-DDTHH:mm'),         // Default to 1 hour from now
+            datetime: format(addHours(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm'),         // Default to 1 hour from now
             priority: this.plugin.settings.defaultPriority,                               // Use user's default priority setting
             category: ''                                                                   // Empty category
         };
 
         // For existing reminders, convert ISO datetime to format compatible with datetime-local input
         if (existingReminder?.datetime) {
-            this.reminder.datetime = window.moment(existingReminder.datetime).format('YYYY-MM-DDTHH:mm');
+            this.reminder.datetime = format(new Date(existingReminder.datetime), 'yyyy-MM-dd\'T\'HH:mm');
         }
 
         // Auto-populate context if creating a new reminder from the active note
@@ -152,7 +153,7 @@ export class ReminderModal extends Modal {
             { label: '30 mins', minutes: 30 },     // Half hour delay
             { label: '1 hr', hours: 1 },          // One hour from now
             { label: '4 hrs', hours: 4 },         // Later today
-            { label: 'Tomorrow 9am', time: window.moment().add(1, 'day').hour(9).minute(0) }  // Next morning
+            { label: 'Tomorrow 9am', time: setMinutes(setHours(addDays(new Date(), 1), 9), 0) }  // Next morning
         ];
 
         // Create a button for each quick time option
@@ -163,16 +164,16 @@ export class ReminderModal extends Modal {
                 let newTime;
                 if (qt.hours) {
                     // Add specified hours to current time
-                    newTime = window.moment().add(qt.hours, 'hours');
+                    newTime = addHours(new Date(), qt.hours);
                 } else if (qt.minutes) {
                     // Add specified minutes to current time
-                    newTime = window.moment().add(qt.minutes, 'minutes');
+                    newTime = addMinutes(new Date(), qt.minutes);
                 } else {
                     // Use specific time (like "Tomorrow 9am")
-                    newTime = qt.time as moment.Moment;
+                    newTime = qt.time as Date;
                 }
                 // Update the reminder data and refresh the datetime input
-                this.reminder.datetime = newTime.format('YYYY-MM-DDTHH:mm');
+                this.reminder.datetime = format(newTime, 'yyyy-MM-dd\'T\'HH:mm');
                 this.refreshDateTime();
             });
         });
@@ -409,7 +410,7 @@ export class ReminderModal extends Modal {
 
         // Validate that the time is in the future (for new incomplete reminders)
         // Allow past times for completed reminders or when editing
-        if (window.moment(this.reminder.datetime).isBefore(window.moment()) && !this.reminder.completed) {
+        if (isBefore(new Date(this.reminder.datetime), new Date()) && !this.reminder.completed) {
             new Notice('Please select a future date and time');
             return;
         }
@@ -420,8 +421,8 @@ export class ReminderModal extends Modal {
         }
 
         // Convert datetime to ISO format with seconds for consistent timing precision
-        // The modal uses 'YYYY-MM-DDTHH:mm' format, but we need full ISO string for consistency with snoozedUntil
-        this.reminder.datetime = window.moment(this.reminder.datetime).toISOString();
+        // The modal uses 'yyyy-MM-dd'T'HH:mm' format, but we need full ISO string for consistency with snoozedUntil
+        this.reminder.datetime = new Date(this.reminder.datetime).toISOString();
 
         // All validation passed - submit the reminder
         this.onSubmit(this.reminder as Reminder, this.isEdit);

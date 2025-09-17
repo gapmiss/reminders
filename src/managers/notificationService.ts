@@ -2,6 +2,7 @@ import { Notice } from "obsidian";
 import ReminderPlugin from "../main";
 import { Reminder } from "../modals/reminderModal";
 import { SnoozeSuggestModal } from "../modals/snoozeSuggestModal";
+import { addMinutes } from 'date-fns';
 
 /**
  * Service responsible for displaying reminders to users through various notification methods.
@@ -97,7 +98,7 @@ export class NotificationService {
                 this.plugin,
                 async (minutes: number) => {
                     // Calculate when to show the reminder again
-                    const snoozeUntil = window.moment().add(minutes, 'minutes').toISOString();
+                    const snoozeUntil = addMinutes(new Date(), minutes).toISOString();
                     // Update the reminder with snooze information
                     await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
 

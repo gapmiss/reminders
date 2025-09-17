@@ -4,6 +4,7 @@ import { Reminder } from "./modals/reminderModal";
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
 import { ReminderTimeUpdater } from "./managers/reminderDataManager";
+import { format, formatDistanceToNow, isBefore, addMinutes, differenceInMilliseconds } from 'date-fns';
 
 /**
  * Sidebar view component that displays reminders in Obsidian's interface.
@@ -304,16 +305,16 @@ export class ReminderSidebarView extends ItemView {
         const metaEl = contentEl.createDiv({ cls: 'reminder-meta' });
 
         // Display the reminder time in both absolute and relative formats
-        const timeStr = window.moment(reminder.datetime).format('MMM D, h:mm A');  // "Jan 15, 2:30 PM"
-        const relativeTime = window.moment(reminder.datetime).fromNow();           // "5 minutes ago"
+        const timeStr = format(new Date(reminder.datetime), 'MMM d, h:mm a');  // "Jan 15, 2:30 pm"
+        const relativeTime = formatDistanceToNow(new Date(reminder.datetime), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "5 minutes ago"
         const timeSpan = metaEl.createSpan({ cls: 'time-span', text: `${timeStr} (${relativeTime})` });
         // Register this element for automatic time updates
         this.reminderUpdater.addReminder(reminder, timeSpan);
 
         // If reminder is snoozed, show when it will reappear
         if (reminder.snoozedUntil) {
-            const snoozeRelativeTime = window.moment(reminder.snoozedUntil).fromNow();
-            const snoozeUntil = `${window.moment(reminder.snoozedUntil).format('MMM D, h:mm A')} (${snoozeRelativeTime})`;
+            const snoozeRelativeTime = formatDistanceToNow(new Date(reminder.snoozedUntil), { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');
+            const snoozeUntil = `${format(new Date(reminder.snoozedUntil), 'MMM d, h:mm a')} (${snoozeRelativeTime})`;
             const snoozeSpan = metaEl.createSpan({
                 text: `⏰ Snoozed until ${snoozeUntil}`,
                 cls: 'reminder-snoozed'
@@ -358,7 +359,7 @@ export class ReminderSidebarView extends ItemView {
             const menu = new Menu();
 
             // Add snooze option only for incomplete reminders that are overdue
-            if (!reminder.completed && window.moment(reminder.datetime).isBefore(window.moment())) {
+            if (!reminder.completed && isBefore(new Date(reminder.datetime), new Date())) {
                 menu.addItem((item) => {
                     item.setTitle('Snooze')
                         .setIcon('alarm-clock-plus')
@@ -370,7 +371,7 @@ export class ReminderSidebarView extends ItemView {
                                 this.plugin,
                                 async (minutes: number) => {
                                     // Calculate new snooze time from current moment
-                                    const snoozeUntil = window.moment().add(minutes, 'minutes').toISOString();
+                                    const snoozeUntil = addMinutes(new Date(), minutes).toISOString();
                                     await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
 
                                     // Show user-friendly confirmation message
@@ -455,7 +456,7 @@ export class ReminderSidebarView extends ItemView {
             case 'completed':
                 // Show only completed reminders, sorted by completion time (newest first)
                 reminders = reminders.filter(r => r.completed)
-                    .sort((a, b) => window.moment(b.completedAt || b.datetime).diff(window.moment(a.completedAt || a.datetime)));
+                    .sort((a, b) => differenceInMilliseconds(new Date(b.completedAt || b.datetime), new Date(a.completedAt || a.datetime)));
                 break;
             case 'all':
                 // Show all reminders with smart sorting:
@@ -469,10 +470,10 @@ export class ReminderSidebarView extends ItemView {
                     // If both have same completion status, sort by appropriate date
                     if (a.completed && b.completed) {
                         // Both completed: newest completion first
-                        return window.moment(b.completedAt || b.datetime).diff(window.moment(a.completedAt || a.datetime));
+                        return differenceInMilliseconds(new Date(b.completedAt || b.datetime), new Date(a.completedAt || a.datetime));
                     } else {
                         // Both incomplete: soonest datetime first
-                        return window.moment(a.datetime).diff(window.moment(b.datetime));
+                        return differenceInMilliseconds(new Date(a.datetime), new Date(b.datetime));
                     }
                 });
                 break;
