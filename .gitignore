@@ -18,6 +18,9 @@ main.js
 # obsidian
 data.json
 
+# Development logs (not for version control)
+IMPROVEMENTS_LOG.md
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
