@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu } from "obsidian";
 import ReminderPlugin from "./main";
 import { Reminder } from "./modals/reminderModal";
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
@@ -308,73 +308,83 @@ export class ReminderSidebarView extends ItemView {
             });
         }
 
-        // Create container for action buttons (edit, delete, snooze)
+        // Create container for action button (ellipsis menu)
         const actionsEl = itemEl.createDiv({ cls: 'reminder-item-actions' });
 
-        // Only show snooze button for incomplete reminders that are overdue
-        // This helps users deal with reminders that have already passed their time
-        if (!reminder.completed && window.moment(reminder.datetime).isBefore(window.moment())) {
-            const snoozeBtn = actionsEl.createEl('button', {
-                cls: 'clickable-icon',
-                attr: { 'aria-label': 'Snooze' }
-            });
-            setIcon(snoozeBtn, 'alarm-clock-plus');
-            snoozeBtn.addEventListener('click', () => {
-                // Open snooze modal to let user choose how long to snooze
-                const modal = new SnoozeSuggestModal(
-                    this.app,
-                    reminder,
-                    this.plugin,
-                    async (minutes: number) => {
-                        // Calculate new snooze time from current moment
-                        const snoozeUntil = window.moment().add(minutes, 'minutes').toISOString();
-                        await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
-
-                        // Show user-friendly confirmation message
-                        const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
-                        new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
-
-                        // Refresh view to reflect the change
-                        this.render();
-                    }
-                );
-                modal.open();
-            });
-        }
-
-        // Edit button - always available for all reminders
-        const editBtn = actionsEl.createEl('button', {
+        // Single ellipsis button that opens a context menu with all actions
+        const menuBtn = actionsEl.createEl('button', {
             cls: 'clickable-icon',
-            attr: { 'aria-label': 'Edit' }
+            attr: { 'aria-label': 'More actions' }
         });
-        editBtn.addEventListener('click', () => {
-            // Open the reminder modal in edit mode with current reminder data
-            this.plugin.openReminderModal(reminder);
-        });
-        setIcon(editBtn, 'pencil');
+        setIcon(menuBtn, 'more-horizontal');
 
-        // Delete button - always available for all reminders
-        const deleteBtn = actionsEl.createEl('button', {
-            cls: 'clickable-icon',
-            attr: { 'aria-label': 'Delete' }
-        });
-        setIcon(deleteBtn, 'trash');
+        menuBtn.addEventListener('click', (event) => {
+            // Create and show context menu
+            const menu = new Menu();
 
-        deleteBtn.addEventListener('click', () => {
-            // Show confirmation modal before actually deleting
-            // This prevents accidental deletions
-            const confirmModal = new ConfirmDeleteModal(
-                this.app,
-                reminder,
-                async () => {
-                    // This callback runs if user confirms the deletion
-                    await this.plugin.dataManager.deleteReminder(reminder.id);
-                    new Notice('Reminder deleted');
-                    // Refresh view to remove the deleted item
-                    this.render();
-                }
-            );
-            confirmModal.open();
+            // Add snooze option only for incomplete reminders that are overdue
+            if (!reminder.completed && window.moment(reminder.datetime).isBefore(window.moment())) {
+                menu.addItem((item) => {
+                    item.setTitle('Snooze')
+                        .setIcon('alarm-clock-plus')
+                        .onClick(() => {
+                            // Open snooze modal to let user choose how long to snooze
+                            const modal = new SnoozeSuggestModal(
+                                this.app,
+                                reminder,
+                                this.plugin,
+                                async (minutes: number) => {
+                                    // Calculate new snooze time from current moment
+                                    const snoozeUntil = window.moment().add(minutes, 'minutes').toISOString();
+                                    await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
+
+                                    // Show user-friendly confirmation message
+                                    const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
+                                    new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
+
+                                    // Refresh view to reflect the change
+                                    this.render();
+                                }
+                            );
+                            modal.open();
+                        });
+                });
+            }
+
+            // Add edit option - always available for all reminders
+            menu.addItem((item) => {
+                item.setTitle('Edit')
+                    .setIcon('pencil')
+                    .onClick(() => {
+                        // Open the reminder modal in edit mode with current reminder data
+                        this.plugin.openReminderModal(reminder);
+                    });
+            });
+
+            // Add delete option - always available for all reminders
+            menu.addItem((item) => {
+                item.setTitle('Delete')
+                    .setIcon('trash')
+                    .onClick(() => {
+                        // Show confirmation modal before actually deleting
+                        // This prevents accidental deletions
+                        const confirmModal = new ConfirmDeleteModal(
+                            this.app,
+                            reminder,
+                            async () => {
+                                // This callback runs if user confirms the deletion
+                                await this.plugin.dataManager.deleteReminder(reminder.id);
+                                new Notice('Reminder deleted');
+                                // Refresh view to remove the deleted item
+                                this.render();
+                            }
+                        );
+                        confirmModal.open();
+                    });
+            });
+
+            // Show the menu at the button position
+            menu.showAtMouseEvent(event);
         });
     }
 
