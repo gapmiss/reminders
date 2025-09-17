@@ -35,7 +35,8 @@ export interface Reminder {
  * - Responsive UI that adapts to edit vs create mode
  */
 export class ReminderModal extends Modal {
-    private reminder: Partial<Reminder>;                              // Reminder data being edited (partial for new reminders)
+    private reminder: Partial<Reminder>;                              // Original reminder data (unchanged until form submission)
+    private formData: Partial<Reminder>;                              // Form data being edited (temporary until submission)
     private onSubmit: (reminder: Reminder, isEdit: boolean) => void;  // Callback when user submits the form
     private isEdit: boolean;                                          // Whether we're editing existing reminder or creating new one
     plugin: ReminderPlugin;                                           // Plugin instance for accessing settings and methods
@@ -60,8 +61,11 @@ export class ReminderModal extends Modal {
         // Determine if we're editing based on whether existing reminder has an ID
         this.isEdit = !!existingReminder?.id;
 
-        // Initialize reminder data with existing data or sensible defaults
-        this.reminder = existingReminder || {
+        // Initialize original reminder data (unchanged until form submission)
+        this.reminder = existingReminder || {};
+
+        // Initialize form data with existing data or sensible defaults
+        this.formData = existingReminder ? { ...existingReminder } : {
             message: '',                                                                    // Empty message for user to fill
             datetime: format(addHours(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm'),         // Default to 1 hour from now
             priority: this.plugin.settings.defaultPriority,                               // Use user's default priority setting
@@ -72,7 +76,7 @@ export class ReminderModal extends Modal {
         if (existingReminder?.datetime) {
             const existingDate = new Date(existingReminder.datetime);
             if (!isNaN(existingDate.getTime())) {
-                this.reminder.datetime = format(existingDate, 'yyyy-MM-dd\'T\'HH:mm');
+                this.formData.datetime = format(existingDate, 'yyyy-MM-dd\'T\'HH:mm');
             }
         }
 
@@ -81,17 +85,17 @@ export class ReminderModal extends Modal {
             const activeFile = this.app.workspace.getActiveFile();
             if (activeFile) {
                 // Link the reminder to the currently active file
-                this.reminder.sourceNote = activeFile.path;
+                this.formData.sourceNote = activeFile.path;
                 const view = this.app.workspace.getActiveViewOfType(MarkdownView);
                 if (view) {
                     // Link to the current cursor position
                     const cursor = view.editor.getCursor();
-                    this.reminder.sourceLine = cursor.line;
+                    this.formData.sourceLine = cursor.line;
 
                     // If text is selected, use it as the reminder message
                     const selection = view.editor.getSelection();
                     if (selection) {
-                        this.reminder.message = `Reminder: ${selection}`;
+                        this.formData.message = `Reminder: ${selection}`;
                     }
                 }
             }
@@ -121,9 +125,9 @@ export class ReminderModal extends Modal {
             .setDesc('What should I remind you about?')
             .addTextArea(text => {
                 text.setPlaceholder('Enter your reminder message...')
-                    .setValue(this.reminder.message || '')    // Pre-fill with existing value
+                    .setValue(this.formData.message || '')    // Pre-fill with existing value
                     .onChange(value => {
-                        this.reminder.message = value;        // Update reminder data as user types
+                        this.formData.message = value;        // Update form data as user types
                     });
 
                 // Add CSS class for styling and focus the field
@@ -139,9 +143,9 @@ export class ReminderModal extends Modal {
             .addText(text => {
                 // Set input type to datetime-local for native picker
                 text.inputEl.type = 'datetime-local';
-                text.setValue(this.reminder.datetime || '')     // Pre-fill with existing value
+                text.setValue(this.formData.datetime || '')     // Pre-fill with existing value
                     .onChange(value => {
-                        this.reminder.datetime = value;         // Update reminder data when changed
+                        this.formData.datetime = value;         // Update form data when changed
                     });
             });
 
@@ -175,8 +179,8 @@ export class ReminderModal extends Modal {
                     // Use specific time (like "Tomorrow 9am")
                     newTime = qt.time as Date;
                 }
-                // Update the reminder data and refresh the datetime input
-                this.reminder.datetime = format(newTime, 'yyyy-MM-dd\'T\'HH:mm');
+                // Update the form data and refresh the datetime input
+                this.formData.datetime = format(newTime, 'yyyy-MM-dd\'T\'HH:mm');
                 this.refreshDateTime();
             });
         });
@@ -191,9 +195,9 @@ export class ReminderModal extends Modal {
                     .addOption('normal', '⚪ Normal')    // White circle - standard priority
                     .addOption('high', '🟡 High')        // Yellow circle - important
                     .addOption('urgent', '🔴 Urgent')      // Red circle - needs immediate attention
-                    .setValue(this.reminder.priority || 'normal')  // Pre-select current priority
+                    .setValue(this.formData.priority || 'normal')  // Pre-select current priority
                     .onChange(value => {
-                        this.reminder.priority = value as any;    // Update reminder data
+                        this.formData.priority = value as any;    // Update form data
                     });
             });
 
@@ -204,9 +208,9 @@ export class ReminderModal extends Modal {
             .setDesc('Optional: organize your reminders')
             .addText(text => {
                 text.setPlaceholder('work, personal, health...')  // Give examples of common categories
-                    .setValue(this.reminder.category || '')       // Pre-fill with existing value
+                    .setValue(this.formData.category || '')       // Pre-fill with existing value
                     .onChange(value => {
-                        this.reminder.category = value;           // Update reminder data
+                        this.formData.category = value;           // Update form data
                     });
             });
 
@@ -218,24 +222,24 @@ export class ReminderModal extends Modal {
         let wasLinkedBeforeToggle = false; // Track if file was linked before toggle change
         new Setting(contentEl)
             .setName('Link to note')
-            .setDesc(this.reminder.sourceNote || 'No note linked')  // Show current link status
+            .setDesc(this.formData.sourceNote || 'No note linked')  // Show current link status
             .addToggle(toggle => {
                 toggleComponent = toggle; // Store reference for later updates
                 toggle
-                    .setValue(!!this.reminder.sourceNote)  // Set toggle based on whether note is linked
+                    .setValue(!!this.formData.sourceNote)  // Set toggle based on whether note is linked
                     .onChange(async (value) => {
                         // Prevent recursive calls when programmatically setting toggle value
                         if (isUpdatingToggle) return;
 
                         // Store the previous state before making changes
-                        wasLinkedBeforeToggle = !!this.reminder.sourceNote;
+                        wasLinkedBeforeToggle = !!this.formData.sourceNote;
 
                         if (value) {
                             // User wants to link a note - open file picker
                             new FileSuggestModal(this.app, (selectedFile) => {
                                 if (selectedFile) {
                                     // User selected a file
-                                    this.reminder.sourceNote = selectedFile.path;
+                                    this.formData.sourceNote = selectedFile.path;
                                     // Update the UI to show the linked note
                                     const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
                                     if (setting) {
@@ -262,7 +266,7 @@ export class ReminderModal extends Modal {
                             }).open();
                         } else {
                             // User wants to unlink the note
-                            this.reminder.sourceNote = '';
+                            this.formData.sourceNote = '';
                             // Update the UI to show no link
                             const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
                             if (setting) {
@@ -317,7 +321,7 @@ export class ReminderModal extends Modal {
             .addButton(button => {
                 buttonComponent = button; // Store reference for updates in toggle callback
                 // Add a button that changes behavior based on link status
-                if (this.reminder.sourceNote) {
+                if (this.formData.sourceNote) {
                     // If note is linked, show "Open" button to navigate to it
                     button
                         .setButtonText('Open')
@@ -325,7 +329,7 @@ export class ReminderModal extends Modal {
                         .setClass('mod-cta')  // Prominent button style
                         .onClick(() => {
                             // Try to open the linked file
-                            const file = this.app.vault.getAbstractFileByPath(this.reminder.sourceNote!);
+                            const file = this.app.vault.getAbstractFileByPath(this.formData.sourceNote!);
                             if (file instanceof TFile) {
                                 this.app.workspace.openLinkText(file.path, '');
                             } else {
@@ -343,7 +347,7 @@ export class ReminderModal extends Modal {
                             new FileSuggestModal(this.app, async (selectedFile) => {
                                 if (selectedFile) {
                                     // User selected a file
-                                    this.reminder.sourceNote = selectedFile.path;
+                                    this.formData.sourceNote = selectedFile.path;
                                     // Update toggle state to reflect the link
                                     toggleComponent.setValue(true);
                                     // Update the description text
@@ -388,9 +392,9 @@ export class ReminderModal extends Modal {
     private refreshDateTime() {
         // Find the datetime input element in the modal
         const datetimeInput = this.contentEl.querySelector('input[type="datetime-local"]') as HTMLInputElement;
-        if (datetimeInput && this.reminder.datetime) {
+        if (datetimeInput && this.formData.datetime) {
             // Update the input's displayed value
-            datetimeInput.value = this.reminder.datetime;
+            datetimeInput.value = this.formData.datetime;
         }
     }
 
@@ -400,35 +404,40 @@ export class ReminderModal extends Modal {
      */
     private handleSubmit() {
         // Validate that user entered a message
-        if (!this.reminder.message?.trim()) {
+        if (!this.formData.message?.trim()) {
             new Notice('Please enter a message for your reminder');
             return;
         }
 
         // Validate that user selected a date/time
-        if (!this.reminder.datetime) {
+        if (!this.formData.datetime) {
             new Notice('Please select a date and time');
             return;
         }
 
         // Validate that the time is in the future (for new incomplete reminders)
         // Allow past times for completed reminders or when editing
-        if (isBefore(new Date(this.reminder.datetime), new Date()) && !this.reminder.completed) {
+        if (isBefore(new Date(this.formData.datetime), new Date()) && !this.formData.completed) {
             new Notice('Please select a future date and time');
             return;
         }
 
+        // Create the final reminder by merging original data with form data
+        const finalReminder = { ...this.reminder, ...this.formData };
+
         // Generate ID for new reminders (existing reminders already have one)
-        if (!this.reminder.id) {
-            this.reminder.id = `reminder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        if (!finalReminder.id) {
+            finalReminder.id = `reminder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         }
 
         // Convert datetime to ISO format with seconds for consistent timing precision
         // The modal uses 'yyyy-MM-dd'T'HH:mm' format, but we need full ISO string for consistency with snoozedUntil
-        this.reminder.datetime = new Date(this.reminder.datetime).toISOString();
+        if (finalReminder.datetime) {
+            finalReminder.datetime = new Date(finalReminder.datetime).toISOString();
+        }
 
         // All validation passed - submit the reminder
-        this.onSubmit(this.reminder as Reminder, this.isEdit);
+        this.onSubmit(finalReminder as Reminder, this.isEdit);
         this.close();
     }
 }
