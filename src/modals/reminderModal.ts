@@ -67,6 +67,11 @@ export class ReminderModal extends Modal {
             category: ''                                                                   // Empty category
         };
 
+        // For existing reminders, convert ISO datetime to format compatible with datetime-local input
+        if (existingReminder?.datetime) {
+            this.reminder.datetime = window.moment(existingReminder.datetime).format('YYYY-MM-DDTHH:mm');
+        }
+
         // Auto-populate context if creating a new reminder from the active note
         if (!existingReminder) {
             const activeFile = this.app.workspace.getActiveFile();
@@ -348,6 +353,10 @@ export class ReminderModal extends Modal {
         if (!this.reminder.id) {
             this.reminder.id = `reminder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         }
+
+        // Convert datetime to ISO format with seconds for consistent timing precision
+        // The modal uses 'YYYY-MM-DDTHH:mm' format, but we need full ISO string for consistency with snoozedUntil
+        this.reminder.datetime = window.moment(this.reminder.datetime).toISOString();
 
         // All validation passed - submit the reminder
         this.onSubmit(this.reminder as Reminder, this.isEdit);
