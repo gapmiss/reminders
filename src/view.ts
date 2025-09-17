@@ -121,11 +121,42 @@ export class ReminderSidebarView extends ItemView {
         });
 
         // Refresh button to manually reload the view
-        const refreshBtn = actionsEl.createEl('button', { text: '↻' });
+        const refreshBtn = actionsEl.createEl('button', {
+            cls: 'refresh-button'
+        });
         setIcon(refreshBtn, 'rotate-ccw');  // Use Obsidian's refresh icon
         refreshBtn.addEventListener('click', () => {
+            // Create spinner overlay relative to the view's content area
+            this.containerEl.style.position = 'relative';
+            const spinner = this.containerEl.createDiv({ cls: 'refresh-spinner' });
+
+            // Create SVG element
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'spinner-icon');
+            svg.setAttribute('viewBox', '0 0 24 24');
+
+            // Create circle element
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', '12');
+            circle.setAttribute('cy', '12');
+            circle.setAttribute('r', '10');
+            circle.setAttribute('stroke', 'currentColor');
+            circle.setAttribute('stroke-width', '4');
+            circle.setAttribute('fill', 'none');
+            circle.setAttribute('stroke-dasharray', '31.416');
+            circle.setAttribute('stroke-dashoffset', '31.416');
+
+            // Append circle to SVG and SVG to spinner
+            svg.appendChild(circle);
+            spinner.appendChild(svg);
+
             // Re-render the entire view to get latest data
             this.render();
+
+            // Remove spinner after a short delay
+            setTimeout(() => {
+                spinner.remove();
+            }, 600);
         });
     }
 
@@ -302,8 +333,9 @@ export class ReminderSidebarView extends ItemView {
         // Show linked source note with clickable link to open it
         if (reminder.sourceNote) {
             const noteLink = metaEl.createEl('a', {
-                text: reminder.sourceNote.split('/').pop(),  // Show just the filename, not full path
-                cls: 'reminder-note-link'
+                text: reminder.sourceNote.split('/').pop()?.replace('.md', ''),  // Show just the filename, not full path
+                cls: 'reminder-note-link',
+                attr: { 'aria-label': `Open "${reminder.sourceNote}"`}
             });
             noteLink.addEventListener('click', () => {
                 // Open the linked note in Obsidian
@@ -386,8 +418,15 @@ export class ReminderSidebarView extends ItemView {
                     });
             });
 
-            // Show the menu at the button position
-            menu.showAtMouseEvent(event);
+            // Show the menu at the button position (works for both mouse and keyboard)
+            if (event.type === 'click' && event.detail === 0) {
+                // Keyboard activation (Enter/Space) - position menu at button
+                const rect = menuBtn.getBoundingClientRect();
+                menu.showAtPosition({ x: rect.left, y: rect.bottom });
+            } else {
+                // Mouse click - use mouse position
+                menu.showAtMouseEvent(event);
+            }
         });
     }
 
