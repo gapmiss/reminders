@@ -141,9 +141,9 @@ export class ReminderDataManager {
             snoozeCount: reminder.snoozeCount + 1          // Increment snooze counter for tracking
         });
 
-        // Refresh the sidebar view if it's open to reflect the change
+        // Refresh the sidebar view and switch to snoozed tab if it's open
         if (this.plugin.sidebarView) {
-            this.plugin.sidebarView.refresh();
+            this.plugin.sidebarView.setFilter('snoozed');
         }
 
         return result;

@@ -286,7 +286,13 @@ export default class ReminderPlugin extends Plugin {
 			// Refresh the sidebar view if it's currently open
 			// This ensures the UI stays in sync with the data
 			if (this.sidebarView) {
-				this.sidebarView.refresh();
+				if (isEdit) {
+					// For edits, just refresh without changing tabs
+					this.sidebarView.refresh();
+				} else {
+					// For new reminders, switch to upcoming tab to show the new reminder
+					this.sidebarView.setFilter('upcoming');
+				}
 			}
 
 			// Tell the scheduler to immediately re-evaluate all reminders

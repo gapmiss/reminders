@@ -429,6 +429,17 @@ export class ReminderSidebarView extends ItemView {
     }
 
     /**
+     * Sets the current filter and refreshes the view.
+     * Used to programmatically switch tabs when certain actions occur.
+     *
+     * @param filter - The filter to switch to
+     */
+    setFilter(filter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed') {
+        this.currentFilter = filter;
+        this.render();
+    }
+
+    /**
      * Public method to refresh the view.
      * This is called by the main plugin when data changes.
      */
