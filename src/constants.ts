@@ -32,7 +32,11 @@ export const UI_CONFIG = {
     /** Time update interval for relative time displays (milliseconds) */
     TIME_UPDATE_INTERVAL: 5000,
     /** Minutes in 24 hours (for snooze calculations) */
-    MINUTES_IN_DAY: 24 * 60
+    MINUTES_IN_DAY: 24 * 60,
+    /** Debounce delay for rendering operations (milliseconds) */
+    RENDER_DEBOUNCE_DELAY: 100,
+    /** Maximum debounce delay before forcing render (milliseconds) */
+    MAX_RENDER_DELAY: 500
 } as const;
 
 /**

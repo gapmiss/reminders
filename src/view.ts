@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu, debounce } from "obsidian";
 import ReminderPlugin from "./main";
 import type { Reminder, FilterType } from './types';
 import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS } from './constants';
@@ -21,6 +21,7 @@ export class ReminderSidebarView extends ItemView {
     private plugin: ReminderPlugin;                    // Reference to main plugin for accessing data and methods
     private currentFilter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed' = 'pending';  // Currently selected filter tab
     private reminderUpdater: ReminderTimeUpdater;     // Service that updates relative time displays ("5 minutes ago")
+    private debouncedRender: () => void;              // Debounced version of render method to prevent excessive re-renders
 
     /**
      * Constructor for the sidebar view.
@@ -33,6 +34,8 @@ export class ReminderSidebarView extends ItemView {
         super(leaf);
         // Store plugin reference for later use
         this.plugin = plugin;
+        // Initialize debounced render function to prevent excessive re-renders
+        this.debouncedRender = debounce(this.render.bind(this), UI_CONFIG.RENDER_DEBOUNCE_DELAY, true);
     }
 
     /**
@@ -76,6 +79,10 @@ export class ReminderSidebarView extends ItemView {
     async onClose() {
         // Stop the time updater to prevent it from running when view is closed
         this.reminderUpdater.destroy();
+        // Cancel any pending debounced renders to prevent memory leaks
+        if (this.debouncedRender && typeof this.debouncedRender.cancel === 'function') {
+            this.debouncedRender.cancel();
+        }
     }
 
     /**
@@ -83,6 +90,11 @@ export class ReminderSidebarView extends ItemView {
      * This method is called whenever the view needs to be refreshed.
      */
     render() {
+        // Skip rendering if the view is not currently visible to improve performance
+        if (!this.containerEl.isConnected) {
+            return;
+        }
+
         // Clear any existing content
         this.contentEl.empty();
         // Add CSS class for styling
@@ -193,7 +205,7 @@ export class ReminderSidebarView extends ItemView {
                 // Update the current filter
                 this.currentFilter = filter.key as FilterType;
                 // Re-render to show the new filtered view
-                this.render();
+                this.debouncedRender();
             });
         });
     }
@@ -283,7 +295,7 @@ export class ReminderSidebarView extends ItemView {
                         });
                     }
                     // Refresh the view to reflect the change
-                    this.render();
+                    this.debouncedRender();
                 })
             );
 
@@ -386,7 +398,7 @@ export class ReminderSidebarView extends ItemView {
                                     new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
 
                                     // Refresh view to reflect the change
-                                    this.render();
+                                    this.debouncedRender();
                                 }
                             );
                             modal.open();
@@ -419,7 +431,7 @@ export class ReminderSidebarView extends ItemView {
                                 await this.plugin.dataManager.deleteReminder(reminder.id);
                                 new Notice('Reminder deleted');
                                 // Refresh view to remove the deleted item
-                                this.render();
+                                this.debouncedRender();
                             }
                         );
                         confirmModal.open();
@@ -502,8 +514,9 @@ export class ReminderSidebarView extends ItemView {
     /**
      * Public method to refresh the view.
      * This is called by the main plugin when data changes.
+     * Uses debounced rendering to prevent excessive re-renders.
      */
     refresh() {
-        this.render();
+        this.debouncedRender();
     }
 }
