@@ -59,6 +59,7 @@ This is a comprehensive reminder system for Obsidian that allows users to create
   - Category organization
   - Note linking with file picker
   - Form validation
+  - **Non-destructive editing**: Changes only applied on form submission, not during editing
 
 ##### Confirmation Modal (`src/modals/confirmDeleteModal.ts`)
 - **Purpose**: Prevents accidental deletions
@@ -132,7 +133,8 @@ interface Reminder {
 #### Editing Reminders
 1. Click edit (pencil) icon on any reminder
 2. Modal opens in edit mode with current values
-3. Modify fields and save
+3. Modify fields as needed - **changes are not applied until saved**
+4. Click "Update" to save changes or "Cancel" to discard them
 
 #### Completing Reminders
 1. **From Sidebar**: Toggle completion checkbox
@@ -202,22 +204,26 @@ interface Reminder {
 
 #### Manual Testing Checklist
 - [ ] Create reminder with all field types
-- [ ] Edit existing reminder
+- [ ] Edit existing reminder (verify changes only apply on save, not during editing)
+- [ ] Cancel reminder editing (verify original data is preserved)
 - [ ] Test all filter views
 - [ ] Verify notification triggering
 - [ ] Test snooze functionality
-- [ ] Test completion workflow
+- [ ] Test completion workflow (especially with snoozed reminders)
 - [ ] Test deletion with confirmation
 - [ ] Test note linking
 - [ ] Test context menu integration
 - [ ] Test keyboard shortcuts
+- [ ] Test date validation (invalid dates should show fallback text, not crash)
+- [ ] Test modal editing cancellation (no data should be lost)
 
 #### Test Data Creation
 ```javascript
 // In browser console while plugin is loaded
+import { addMinutes } from 'date-fns';
 app.plugins.plugins.reminders.dataManager.createReminder({
     message: "Test reminder",
-    datetime: moment().add(1, 'minute').toISOString(),
+    datetime: addMinutes(new Date(), 1).toISOString(),
     priority: "high",
     category: "testing"
 });
@@ -277,7 +283,7 @@ src/
 ### Scheduler Optimization
 - Uses adaptive intervals (5s when reminders due soon, 30s otherwise)
 - Prevents duplicate processing with Set tracking
-- Efficient time calculations with moment.js
+- Efficient time calculations with date-fns
 
 ### UI Performance
 - Lazy loading of reminder list items
@@ -289,6 +295,27 @@ src/
 - Timer cleanup in `ReminderTimeUpdater.destroy()`
 - Event listener cleanup in modal close handlers
 
+## Recent Architectural Improvements
+
+### Date-fns Migration (2025)
+- **Replaced moment.js with date-fns** for better performance and smaller bundle size
+- **Enhanced date validation**: All date formatting operations now include proper validation to handle undefined/null values
+- **Error resilience**: ReminderTimeUpdater and other components now gracefully handle invalid dates instead of throwing runtime errors
+- **Consistent formatting**: Standardized date handling across all components with proper fallback text for invalid dates
+
+### Modal Form Improvements (2025)
+- **Non-destructive editing**: Reminder modal now uses a two-layer data approach
+  - `reminder`: Original data (unchanged until form submission)
+  - `formData`: Working copy for form editing
+- **User experience**: Changes are only applied when explicitly saved, not during field editing
+- **Data integrity**: Cancelling the modal discards all changes, preserving original reminder data
+- **Form validation**: All validation now operates on form data before merging with original data
+
+### Error Handling Improvements
+- **Date validation**: All date-fns operations include `isNaN(date.getTime())` checks
+- **Graceful degradation**: Invalid dates show meaningful fallback text instead of causing crashes
+- **Runtime stability**: Fixed "Invalid time value" errors that occurred when completing snoozed reminders
+
 ## Security Considerations
 
 ### Data Storage
@@ -298,9 +325,10 @@ src/
 
 ### Input Validation
 - Message length and content validation
-- DateTime format validation
+- DateTime format validation with proper date-fns error handling
 - File path validation for note linking
 - Priority and category value validation
+- **Robust date validation**: All date operations include checks for invalid Date objects to prevent runtime errors
 
 ## Future Enhancement Ideas
 
