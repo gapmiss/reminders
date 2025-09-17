@@ -8,6 +8,7 @@ import { ReminderDataManager } from "./managers/reminderDataManager";
 import { NotificationService } from "./managers/notificationService";
 import { Scheduler } from "./managers/scheduler";
 import { format, addHours } from 'date-fns';
+import { ErrorHandler, createErrorHandler, ErrorCategory } from './utils/errorHandling';
 
 /**
  * Main plugin class that extends Obsidian's Plugin base class.
@@ -26,6 +27,7 @@ export default class ReminderPlugin extends Plugin {
 	scheduler!: Scheduler;                     // Handles timing and scheduling of reminders
 	sidebarView?: ReminderSidebarView;        // Optional sidebar UI component (may not always be open)
 	settings: RemindersSettings;              // Plugin configuration settings
+	errorHandler!: ErrorHandler;              // Centralized error handling and user feedback
 
 	/**
 	 * Plugin initialization method called when Obsidian loads the plugin.
@@ -36,6 +38,9 @@ export default class ReminderPlugin extends Plugin {
 		// Load user settings from Obsidian's data storage
 		// This must happen first as other services may depend on these settings
 		await this.loadSettings();
+
+		// Initialize error handler early so all other services can use it
+		this.errorHandler = createErrorHandler(this);
 
 		// Add our settings tab to Obsidian's settings panel
 		// This allows users to configure the plugin through the UI
@@ -243,7 +248,10 @@ export default class ReminderPlugin extends Plugin {
 
 		// If no text is selected, show an error and exit early
 		if (!selection) {
-			new Notice('No text selected');
+			this.errorHandler.handleValidationError(
+				'No text selected for reminder creation',
+				'No text selected'
+			);
 			return;
 		}
 
@@ -269,47 +277,59 @@ export default class ReminderPlugin extends Plugin {
 	 * @param isEdit - True if editing existing reminder, false if creating new one
 	 */
 	private async handleReminderSubmission(reminderData: Reminder, isEdit: boolean) {
-		try {
-			let reminder: Reminder;
+		const result = await this.errorHandler.safeAsync(
+			async () => {
+				let reminder: Reminder;
 
-			if (isEdit) {
-				// Update an existing reminder
-				const updatedReminder = await this.dataManager.updateReminder(reminderData.id, reminderData);
-				if (!updatedReminder) {
-					// Handle case where reminder was deleted by another process
-					new Notice('Failed to update reminder - reminder not found');
-					return;
-				}
-				reminder = updatedReminder;
-				new Notice(`Reminder updated: ${reminder.message}`);
-			} else {
-				// Create a brand new reminder
-				reminder = await this.dataManager.createReminder(reminderData);
-				new Notice(`Reminder created: ${reminder.message}`);
-			}
-
-			// Refresh the sidebar view if it's currently open
-			// This ensures the UI stays in sync with the data
-			if (this.sidebarView) {
 				if (isEdit) {
-					// For edits, just refresh without changing tabs
-					this.sidebarView.refresh();
+					// Update an existing reminder
+					const updatedReminder = await this.dataManager.updateReminder(reminderData.id, reminderData);
+					if (!updatedReminder) {
+						// Handle case where reminder was deleted by another process
+						this.errorHandler.handleDataError(
+							'Reminder not found during update operation',
+							undefined,
+							{ reminderId: reminderData.id }
+						);
+						return null;
+					}
+					reminder = updatedReminder;
+					new Notice(`Reminder updated: ${reminder.message}`);
 				} else {
-					// For new reminders, switch to upcoming tab to show the new reminder
-					this.sidebarView.setFilter('upcoming');
+					// Create a brand new reminder
+					reminder = await this.dataManager.createReminder(reminderData);
+					new Notice(`Reminder created: ${reminder.message}`);
 				}
+
+				// Refresh the sidebar view if it's currently open
+				// This ensures the UI stays in sync with the data
+				if (this.sidebarView) {
+					if (isEdit) {
+						// For edits, just refresh without changing tabs
+						this.sidebarView.refresh();
+					} else {
+						// For new reminders, switch to upcoming tab to show the new reminder
+						this.sidebarView.setFilter('upcoming');
+					}
+				}
+
+				// Tell the scheduler to immediately re-evaluate all reminders
+				// This ensures new/updated reminders are scheduled correctly
+				this.scheduler.scheduleImmediate();
+
+				return reminder;
+			},
+			`Failed to ${isEdit ? 'update' : 'create'} reminder`,
+			ErrorCategory.DATA_ACCESS,
+			{
+				isEdit,
+				reminderId: reminderData.id,
+				reminderMessage: reminderData.message
 			}
+		);
 
-			// Tell the scheduler to immediately re-evaluate all reminders
-			// This ensures new/updated reminders are scheduled correctly
-			this.scheduler.scheduleImmediate();
-
-		} catch (error) {
-			// Log the full error for debugging purposes
-			console.error('Failed to save reminder:', error);
-			// Show user-friendly error message
-			new Notice(`Failed to ${isEdit ? 'update' : 'create'} reminder`);
-		}
+		// If the operation failed, result will be null and error was already handled
+		return result;
 	}
 
 	/**
@@ -330,3 +350,6 @@ export default class ReminderPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
+
+// Export type alias for use in other files
+export type RemindersPlugin = ReminderPlugin;

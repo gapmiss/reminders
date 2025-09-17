@@ -2,6 +2,7 @@ import ReminderPlugin from "../main";
 import { ReminderDataManager } from "./reminderDataManager";
 import { NotificationService } from "./notificationService";
 import { addMinutes, isAfter, differenceInSeconds } from 'date-fns';
+import { ErrorCategory } from '../utils/errorHandling';
 
 /**
  * Scheduler service that monitors reminders and triggers notifications at the right time.
@@ -210,8 +211,16 @@ export class Scheduler {
             }
 
         } catch (error) {
-            // Log any errors that occur during checking
-            console.error('Error in high-frequency check:', error);
+            // Use centralized error handling for scheduler errors
+            this.plugin.errorHandler.handleSchedulerError(
+                'Error occurred during reminder check cycle',
+                error instanceof Error ? error : new Error(String(error)),
+                {
+                    checkCount: this.checkCount,
+                    isRunning: this.isRunning,
+                    processedCount: this.processedReminders.size
+                }
+            );
         }
     }
 

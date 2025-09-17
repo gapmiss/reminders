@@ -3,6 +3,7 @@ import ReminderPlugin from "../main";
 import type { Reminder } from '../types';
 import { SnoozeSuggestModal } from "../modals/snoozeSuggestModal";
 import { addMinutes } from 'date-fns';
+import { ErrorCategory } from '../utils/errorHandling';
 
 /**
  * Service responsible for displaying reminders to users through various notification methods.
@@ -77,12 +78,20 @@ export class NotificationService {
             cls: 'mod-cta'  // Obsidian's call-to-action button style (usually blue/prominent)
         });
         completeBtn.addEventListener('click', async () => {
-            // Mark the reminder as completed in the data store
-            await this.plugin.dataManager.completeReminder(reminder.id);
-            // Hide this notice since it's been handled
-            notice.hide();
-            // Show confirmation that the action was successful
-            new Notice('✅ Reminder completed');
+            const result = await this.plugin.errorHandler.safeAsync(
+                async () => {
+                    // Mark the reminder as completed in the data store
+                    await this.plugin.dataManager.completeReminder(reminder.id);
+                    // Hide this notice since it's been handled
+                    notice.hide();
+                    // Show confirmation that the action was successful
+                    new Notice('✅ Reminder completed');
+                    return true;
+                },
+                'Failed to complete reminder from notification',
+                ErrorCategory.DATA_ACCESS,
+                { reminderId: reminder.id, reminderMessage: reminder.message }
+            );
         });
 
         // "Snooze" button - temporarily hides the reminder
@@ -97,14 +106,21 @@ export class NotificationService {
                 reminder,
                 this.plugin,
                 async (minutes: number) => {
-                    // Calculate when to show the reminder again
-                    const snoozeUntil = addMinutes(new Date(), minutes).toISOString();
-                    // Update the reminder with snooze information
-                    await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
+                    await this.plugin.errorHandler.safeAsync(
+                        async () => {
+                            // Calculate when to show the reminder again
+                            const snoozeUntil = addMinutes(new Date(), minutes).toISOString();
+                            // Update the reminder with snooze information
+                            await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
 
-                    // Show user-friendly confirmation
-                    const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
-                    new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
+                            // Show user-friendly confirmation
+                            const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
+                            new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
+                        },
+                        'Failed to snooze reminder from notification',
+                        ErrorCategory.DATA_ACCESS,
+                        { reminderId: reminder.id, snoozeMinutes: minutes }
+                    );
                 }
             );
             modal.open();
@@ -127,35 +143,63 @@ export class NotificationService {
      * @param reminder - The reminder to display
      */
     private async showSystemNotification(reminder: Reminder): Promise<void> {
-        // Check if the browser supports the Notification API
-        if (!('Notification' in window)) return;
+        await this.plugin.errorHandler.safeAsync(
+            async () => {
+                // Check if the browser supports the Notification API
+                if (!('Notification' in window)) {
+                    this.plugin.errorHandler.handleNotificationError(
+                        'Browser does not support system notifications',
+                        undefined,
+                        { reminderId: reminder.id }
+                    );
+                    return;
+                }
 
-        // Request permission if we haven't asked before
-        if (Notification.permission === 'default') {
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') return;
-        }
+                // Request permission if we haven't asked before
+                if (Notification.permission === 'default') {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        this.plugin.errorHandler.handleNotificationError(
+                            'User denied system notification permission',
+                            undefined,
+                            { reminderId: reminder.id, permission }
+                        );
+                        return;
+                    }
+                }
 
-        // Don't show notification if user has denied permission
-        if (Notification.permission !== 'granted') return;
+                // Don't show notification if user has denied permission
+                if (Notification.permission !== 'granted') {
+                    this.plugin.errorHandler.handleNotificationError(
+                        'System notifications not permitted',
+                        undefined,
+                        { reminderId: reminder.id, permission: Notification.permission }
+                    );
+                    return;
+                }
 
-        // Create the system notification
-        const notification = new Notification('Obsidian Reminder', {
-            body: reminder.message,                    // The reminder text
-            tag: reminder.id,                         // Unique ID to prevent duplicates
-            requireInteraction: true                   // Notification stays visible until user interacts
-            // Note: Could make this conditional based on priority:
-            // requireInteraction: reminder.priority === 'urgent' || reminder.priority === 'high'
-        });
+                // Create the system notification
+                const notification = new Notification('Obsidian Reminder', {
+                    body: reminder.message,                    // The reminder text
+                    tag: reminder.id,                         // Unique ID to prevent duplicates
+                    requireInteraction: true                   // Notification stays visible until user interacts
+                    // Note: Could make this conditional based on priority:
+                    // requireInteraction: reminder.priority === 'urgent' || reminder.priority === 'high'
+                });
 
-        // Handle clicks on the system notification
-        notification.onclick = () => {
-            // Bring Obsidian window to focus
-            window.focus();
-            // Open the reminders sidebar to show all reminders
-            this.plugin.openReminderSidebar();
-            // Close the system notification
-            notification.close();
-        };
+                // Handle clicks on the system notification
+                notification.onclick = () => {
+                    // Bring Obsidian window to focus
+                    window.focus();
+                    // Open the reminders sidebar to show all reminders
+                    this.plugin.openReminderSidebar();
+                    // Close the system notification
+                    notification.close();
+                };
+            },
+            'Failed to show system notification',
+            ErrorCategory.NOTIFICATION,
+            { reminderId: reminder.id, reminderMessage: reminder.message }
+        );
     }
 }

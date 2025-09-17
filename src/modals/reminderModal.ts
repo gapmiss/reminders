@@ -4,6 +4,7 @@ import { formatForInput, createDateHoursFromNow, createTomorrow9AM, isInPast, pa
 import { addMinutes } from 'date-fns';
 import type { Reminder, ReminderPriority } from '../types';
 import { UI_CONFIG, DATE_FORMATS, PRIORITY_CONFIG, CSS_CLASSES, QUICK_TIME_PRESETS } from '../constants';
+import { ErrorCategory } from '../utils/errorHandling';
 
 /**
  * Modal dialog for creating and editing reminders.
@@ -379,20 +380,29 @@ export class ReminderModal extends Modal {
     private handleSubmit() {
         // Validate that user entered a message
         if (!this.formData.message?.trim()) {
-            new Notice('Please enter a message for your reminder');
+            this.plugin.errorHandler.handleValidationError(
+                'Empty reminder message submitted',
+                'Please enter a message for your reminder'
+            );
             return;
         }
 
         // Validate that user selected a date/time
         if (!this.formData.datetime) {
-            new Notice('Please select a date and time');
+            this.plugin.errorHandler.handleValidationError(
+                'No datetime selected for reminder',
+                'Please select a date and time'
+            );
             return;
         }
 
         // Validate that the time is in the future (for new incomplete reminders)
         // Allow past times for completed reminders or when editing
         if (isInPast(this.formData.datetime) && !this.formData.completed) {
-            new Notice('Please select a future date and time');
+            this.plugin.errorHandler.handleValidationError(
+                'Past datetime selected for incomplete reminder',
+                'Please select a future date and time'
+            );
             return;
         }
 
