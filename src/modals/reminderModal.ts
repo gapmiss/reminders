@@ -1,7 +1,7 @@
 import { type App, Modal, MarkdownView, Setting, TFile, FuzzySuggestModal, Notice } from "obsidian";
 import ReminderPlugin from "../main";
 import { format, addHours, addMinutes, addDays, setHours, setMinutes, isBefore } from 'date-fns';
-import type { Reminder } from '../types';
+import type { Reminder, ReminderPriority } from '../types';
 import { UI_CONFIG, DATE_FORMATS, PRIORITY_CONFIG, CSS_CLASSES, QUICK_TIME_PRESETS } from '../constants';
 
 /**
@@ -148,9 +148,9 @@ export class ReminderModal extends Modal {
             btn.addEventListener('click', () => {
                 // Calculate the target time based on the button clicked
                 let newTime;
-                if ('time' in qt) {
+                if ('time' in qt && qt.time instanceof Date) {
                     // Use specific time (like "Tomorrow 9am")
-                    newTime = qt.time as Date;
+                    newTime = qt.time;
                 } else {
                     // Add specified minutes to current time
                     newTime = addMinutes(new Date(), qt.minutes);
@@ -173,7 +173,7 @@ export class ReminderModal extends Modal {
                     .addOption('urgent', `${PRIORITY_CONFIG.urgent.icon} ${PRIORITY_CONFIG.urgent.label}`)      // Red circle - needs immediate attention
                     .setValue(this.formData.priority || 'normal')  // Pre-select current priority
                     .onChange(value => {
-                        this.formData.priority = value as any;    // Update form data
+                        this.formData.priority = value as ReminderPriority;    // Update form data with proper type
                     });
             });
 
@@ -217,8 +217,8 @@ export class ReminderModal extends Modal {
                                     // User selected a file
                                     this.formData.sourceNote = selectedFile.path;
                                     // Update the UI to show the linked note
-                                    const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
-                                    if (setting) {
+                                    const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description');
+                                    if (setting instanceof HTMLElement) {
                                         setting.textContent = selectedFile.path;
                                     }
                                     // Ensure toggle stays on since file was selected
@@ -244,8 +244,8 @@ export class ReminderModal extends Modal {
                             // User wants to unlink the note
                             this.formData.sourceNote = '';
                             // Update the UI to show no link
-                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
-                            if (setting) {
+                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description');
+                            if (setting instanceof HTMLElement) {
                                 setting.textContent = 'No note linked';
                             }
                             // Update button to "Select" mode
@@ -266,8 +266,8 @@ export class ReminderModal extends Modal {
                                             toggleComponent.setValue(true);
                                             isUpdatingToggle = false;
                                             // Update the description text
-                                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description') as HTMLElement;
-                                            if (setting) {
+                                            const setting = contentEl.querySelector('.setting-item.mod-toggle > .setting-item-info > .setting-item-description');
+                                            if (setting instanceof HTMLElement) {
                                                 setting.textContent = selectedFile.path;
                                             }
                                             // Update button back to "Open" mode
@@ -327,8 +327,8 @@ export class ReminderModal extends Modal {
                                     // Update toggle state to reflect the link
                                     toggleComponent.setValue(true);
                                     // Update the description text
-                                    const setting = contentEl.querySelector('.setting-item:last-child .setting-item-description') as HTMLElement;
-                                    if (setting) {
+                                    const setting = contentEl.querySelector('.setting-item:last-child .setting-item-description');
+                                    if (setting instanceof HTMLElement) {
                                         setting.textContent = selectedFile.path;
                                     }
                                     // Update button to "Open" mode
@@ -367,8 +367,8 @@ export class ReminderModal extends Modal {
      */
     private refreshDateTime() {
         // Find the datetime input element in the modal
-        const datetimeInput = this.contentEl.querySelector('input[type="datetime-local"]') as HTMLInputElement;
-        if (datetimeInput && this.formData.datetime) {
+        const datetimeInput = this.contentEl.querySelector('input[type="datetime-local"]');
+        if (datetimeInput instanceof HTMLInputElement && this.formData.datetime) {
             // Update the input's displayed value
             datetimeInput.value = this.formData.datetime;
         }
@@ -413,6 +413,7 @@ export class ReminderModal extends Modal {
         }
 
         // All validation passed - submit the reminder
+        // Type assertion is safe here because we've validated all required fields above
         this.onSubmit(finalReminder as Reminder, this.isEdit);
         this.close();
     }

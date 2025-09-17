@@ -84,7 +84,9 @@ export default class ReminderPlugin extends Plugin {
 		// This fires whenever a user right-clicks in an editor
 		this.registerEvent(
 			this.app.workspace.on('editor-menu', (menu, editor, view) => {
-				this.addEditorContextMenu(menu, editor, view as MarkdownView);
+				if (view instanceof MarkdownView) {
+					this.addEditorContextMenu(menu, editor, view);
+				}
 			})
 		);
 

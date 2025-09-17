@@ -85,3 +85,56 @@ export interface TimeDisplayElement {
     element: HTMLSpanElement;
     isSnoozed: boolean;
 }
+
+/**
+ * Type guard functions for runtime type safety
+ */
+
+/**
+ * Checks if a value is a valid ReminderPriority
+ */
+export function isValidPriority(value: any): value is ReminderPriority {
+    return typeof value === 'string' && ['low', 'normal', 'high', 'urgent'].includes(value);
+}
+
+/**
+ * Checks if a value is a valid FilterType
+ */
+export function isValidFilterType(value: any): value is FilterType {
+    return typeof value === 'string' && ['pending', 'upcoming', 'snoozed', 'completed', 'all'].includes(value);
+}
+
+/**
+ * Checks if a string is a valid ISO date string
+ */
+export function isValidISODate(value: string): boolean {
+    if (typeof value !== 'string') return false;
+    const date = new Date(value);
+    return !isNaN(date.getTime()) && date.toISOString() === value;
+}
+
+/**
+ * Checks if an object has the required properties to be a valid Reminder
+ */
+export function isValidReminder(obj: any): obj is Reminder {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        typeof obj.id === 'string' &&
+        typeof obj.message === 'string' &&
+        typeof obj.datetime === 'string' &&
+        isValidISODate(obj.datetime) &&
+        isValidPriority(obj.priority) &&
+        typeof obj.category === 'string' &&
+        typeof obj.completed === 'boolean' &&
+        typeof obj.snoozeCount === 'number' &&
+        typeof obj.created === 'string' &&
+        isValidISODate(obj.created) &&
+        typeof obj.updated === 'string' &&
+        isValidISODate(obj.updated) &&
+        (obj.sourceNote === undefined || typeof obj.sourceNote === 'string') &&
+        (obj.sourceLine === undefined || typeof obj.sourceLine === 'number') &&
+        (obj.completedAt === undefined || (typeof obj.completedAt === 'string' && isValidISODate(obj.completedAt))) &&
+        (obj.snoozedUntil === undefined || (typeof obj.snoozedUntil === 'string' && isValidISODate(obj.snoozedUntil)))
+    );
+}

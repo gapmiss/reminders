@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu } from "obsidian";
 import ReminderPlugin from "./main";
-import type { Reminder } from './types';
+import type { Reminder, FilterType } from './types';
 import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS } from './constants';
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
@@ -191,7 +191,7 @@ export class ReminderSidebarView extends ItemView {
             // Handle tab clicks
             tab.addEventListener('click', () => {
                 // Update the current filter
-                this.currentFilter = filter.key as any;
+                this.currentFilter = filter.key as FilterType;
                 // Re-render to show the new filtered view
                 this.render();
             });
