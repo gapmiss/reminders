@@ -101,8 +101,11 @@ export class ReminderSidebarView extends ItemView {
         // Create container for the header
         const headerEl = this.contentEl.createDiv({ cls: 'reminder-sidebar-header' });
 
+        const headerIcon = headerEl.createDiv('header-icon');
+        setIcon(headerIcon, 'concierge-bell');
+
         // Add the main title
-        headerEl.createEl('h3', { text: 'Reminders' });
+        headerEl.createEl('h6', { text: 'Reminders', cls: 'header-heading' });
 
         // Create container for action buttons
         const actionsEl = headerEl.createDiv({ cls: 'reminder-actions' });

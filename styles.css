@@ -12,6 +12,27 @@
     margin-bottom: var(--size-4-3);
 }
 
+.header-icon {
+    max-width: 44px;
+    color: var(--interactive-accent);
+    transition: transform 0.15s ease;
+}
+
+.header-icon:hover {
+    animation: shake 0.6s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30%, 50%, 70%, 90% { transform: rotate(-8deg); }
+    20%, 40%, 60%, 80% { transform: rotate(8deg); }
+}
+
+.header-heading {
+    width: 100%;
+    padding-left: .5em;
+}
+
 .reminder-actions {
     display: flex;
     gap: var(--size-4-2);
