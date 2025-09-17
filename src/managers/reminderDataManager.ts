@@ -1,6 +1,7 @@
 import ReminderPlugin from "../main";
 import type { Reminder, TrackedReminder, TimeDisplayElement } from '../types';
-import { format, formatDistanceToNow, addHours, addDays, isBefore, isAfter, differenceInMilliseconds } from 'date-fns';
+import { formatDateDisplay, formatRelativeTime, formatTimeWithRelative, formatSnoozeTime, createDateHoursFromNow, getNow, getNowISO, isInPast, isInFuture, sortByDatetimeAsc } from '../utils/dateUtils';
+import { addDays } from 'date-fns';
 import { UI_CONFIG, DATE_FORMATS } from '../constants';
 
 /**
@@ -39,15 +40,15 @@ export class ReminderDataManager {
         const reminder: Reminder = {
             id: this.generateId(),                                                    // Generate unique identifier
             message: reminderData.message || '',                                     // Reminder text (required)
-            datetime: reminderData.datetime || addHours(new Date(), 1).toISOString(), // Default to 1 hour from now
+            datetime: reminderData.datetime || createDateHoursFromNow(1).toISOString(), // Default to 1 hour from now
             priority: reminderData.priority || this.plugin.settings.defaultPriority, // Use user's default priority setting
             category: reminderData.category || '',                                   // Optional category for organization
             sourceNote: reminderData.sourceNote,                                    // Optional link to source note
             sourceLine: reminderData.sourceLine,                                    // Optional link to specific line
             completed: false,                                                        // New reminders start incomplete
             snoozeCount: 0,                                                         // Track how many times snoozed
-            created: new Date().toISOString(),                                 // Timestamp when created
-            updated: new Date().toISOString()                                  // Timestamp when last modified
+            created: getNowISO(),                                 // Timestamp when created
+            updated: getNowISO()                                  // Timestamp when last modified
         };
 
         // Add to the reminders array in settings
@@ -75,7 +76,7 @@ export class ReminderDataManager {
 
         // Apply updates and set the updated timestamp
         Object.assign(reminder, updates, {
-            updated: new Date().toISOString()  // Always update the timestamp
+            updated: getNowISO()  // Always update the timestamp
         });
 
         // Persist changes to disk
@@ -112,7 +113,7 @@ export class ReminderDataManager {
         // Update the reminder with completion data
         const result = await this.updateReminder(id, {
             completed: true,                               // Mark as completed
-            completedAt: new Date().toISOString(),   // Record when completed
+            completedAt: getNowISO(),   // Record when completed
             snoozedUntil: undefined                       // Clear any active snooze
         });
 
@@ -171,14 +172,13 @@ export class ReminderDataManager {
      * @returns Array of pending reminders sorted by due time (oldest first)
      */
     getPendingReminders(): Reminder[] {
-        const now = new Date();
         return this.plugin.settings.reminders
             .filter(r =>
-                !r.completed &&                                                          // Not already done
-                isBefore(new Date(r.datetime), now) &&                             // Due time has passed
-                (!r.snoozedUntil || isBefore(new Date(r.snoozedUntil), now))      // Not snoozed or snooze expired
+                !r.completed &&                                    // Not already done
+                isInPast(r.datetime) &&                           // Due time has passed
+                (!r.snoozedUntil || isInPast(r.snoozedUntil))     // Not snoozed or snooze expired
             )
-            .sort((a, b) => differenceInMilliseconds(new Date(a.datetime), new Date(b.datetime))); // Sort by due time (oldest first)
+            .sort(sortByDatetimeAsc); // Sort by due time (oldest first)
     }
 
     /**
@@ -190,14 +190,13 @@ export class ReminderDataManager {
      * @returns Array of snoozed reminders sorted by snooze end time (soonest first)
      */
     getSnoozedReminders(): Reminder[] {
-        const now = new Date();
         return this.plugin.settings.reminders
             .filter(r =>
-                !r.completed &&                                    // Not already done
-                r.snoozedUntil &&                                 // Has a snooze time set
-                isAfter(new Date(r.snoozedUntil), now)       // Snooze time is in the future
+                !r.completed &&                    // Not already done
+                r.snoozedUntil &&                 // Has a snooze time set
+                isInFuture(r.snoozedUntil)       // Snooze time is in the future
             )
-            .sort((a, b) => differenceInMilliseconds(new Date(a.snoozedUntil!), new Date(b.snoozedUntil!))); // Sort by snooze end time
+            .sort((a, b) => sortByDatetimeAsc({ datetime: a.snoozedUntil! }, { datetime: b.snoozedUntil! })); // Sort by snooze end time
     }
 
     /**
@@ -211,15 +210,14 @@ export class ReminderDataManager {
      * @returns Array of upcoming reminders sorted by due time (soonest first)
      */
     getUpcomingReminders(limit = 10): Reminder[] {
-        const now = new Date();
         return this.plugin.settings.reminders
             .filter(r =>
-                !r.completed &&                                                          // Not already done
-                isAfter(new Date(r.datetime), now) &&                             // Due time is in future
-                (!r.snoozedUntil || isBefore(new Date(r.snoozedUntil), now))      // Not snoozed or snooze expired
+                !r.completed &&                                    // Not already done
+                isInFuture(r.datetime) &&                         // Due time is in future
+                (!r.snoozedUntil || isInPast(r.snoozedUntil))     // Not snoozed or snooze expired
             )
-            .sort((a, b) => differenceInMilliseconds(new Date(a.datetime), new Date(b.datetime))) // Sort by due time (soonest first)
-            .slice(0, limit);                                                          // Limit results for performance
+            .sort(sortByDatetimeAsc) // Sort by due time (soonest first)
+            .slice(0, limit);        // Limit results for performance
     }
 
     /**
@@ -232,7 +230,7 @@ export class ReminderDataManager {
     getRemindersByNote(notePath: string): Reminder[] {
         return this.plugin.settings.reminders
             .filter(r => r.sourceNote === notePath)                                    // Match source note path
-            .sort((a, b) => differenceInMilliseconds(new Date(a.datetime), new Date(b.datetime))); // Sort by due time
+            .sort(sortByDatetimeAsc); // Sort by due time
     }
 
     /**
@@ -262,7 +260,7 @@ export class ReminderDataManager {
      * @returns Object containing various reminder counts
      */
     getStatistics() {
-        const now = new Date();
+        const now = getNow();
         const next24Hours = addDays(now, 1);
         const reminders = this.plugin.settings.reminders;
 
@@ -271,15 +269,15 @@ export class ReminderDataManager {
             completed: reminders.filter(r => r.completed).length,                 // How many are done
             pending: reminders.filter(r => !r.completed).length,                  // How many are not done
             snoozed: reminders.filter(r =>                                        // How many are currently snoozed
-                !r.completed && r.snoozedUntil && isAfter(new Date(r.snoozedUntil), now)
+                !r.completed && r.snoozedUntil && isInFuture(r.snoozedUntil)
             ).length,
             overdue: reminders.filter(r =>                                        // How many are overdue
-                !r.completed && isBefore(new Date(r.datetime), now)
+                !r.completed && isInPast(r.datetime)
             ).length,
             upcoming24h: reminders.filter(r =>                                    // How many are due in next 24 hours
                 !r.completed &&
-                isAfter(new Date(r.datetime), now) &&
-                isBefore(new Date(r.datetime), next24Hours)
+                isInFuture(r.datetime) &&
+                new Date(r.datetime) < next24Hours
             ).length
         };
     }
@@ -382,32 +380,12 @@ export class ReminderTimeUpdater {
     updateReminderTime(reminder: TrackedReminder, timeSpanElement: HTMLSpanElement, isSnoozed: boolean): void {
         if (isSnoozed) {
             // Show snooze information with clock emoji
-            if (reminder.snoozedUntil) {
-                const snoozedDate = new Date(reminder.snoozedUntil);
-                if (!isNaN(snoozedDate.getTime())) {
-                    const timeStr = format(snoozedDate, DATE_FORMATS.TIME_SHORT);  // "Jan 15, 2:30 pm"
-                    const relativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "in 5 minutes"
-                    timeSpanElement.textContent = `⏰ Snoozed until ${timeStr} (${relativeTime})`;
-                } else {
-                    timeSpanElement.textContent = '⏰ Snooze time invalid';
-                }
-            } else {
-                timeSpanElement.textContent = '⏰ Not snoozed';
-            }
+            timeSpanElement.textContent = reminder.snoozedUntil
+                ? formatSnoozeTime(reminder.snoozedUntil, '⏰ Snooze time invalid')
+                : '⏰ Not snoozed';
         } else {
             // Show regular reminder time
-            if (reminder.datetime) {
-                const reminderDate = new Date(reminder.datetime);
-                if (!isNaN(reminderDate.getTime())) {
-                    const timeStr = format(reminderDate, DATE_FORMATS.TIME_SHORT);      // "Jan 15, 2:30 pm"
-                    const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');               // "5 minutes ago"
-                    timeSpanElement.textContent = `${timeStr} (${relativeTime})`;
-                } else {
-                    timeSpanElement.textContent = 'Invalid date';
-                }
-            } else {
-                timeSpanElement.textContent = 'No date set';
-            }
+            timeSpanElement.textContent = formatTimeWithRelative(reminder.datetime, 'No date set');
         }
     }
 

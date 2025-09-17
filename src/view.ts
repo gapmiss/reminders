@@ -5,7 +5,7 @@ import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS 
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
 import { ReminderTimeUpdater } from "./managers/reminderDataManager";
-import { format, formatDistanceToNow, isBefore, addMinutes, differenceInMilliseconds } from 'date-fns';
+import { formatTimeWithRelative, formatSnoozeTime, isInPast, createSnoozeTime, sortByDatetimeAsc, sortByDatetimeDesc, sortByCompletionTime } from './utils/dateUtils';
 
 /**
  * Sidebar view component that displays reminders in Obsidian's interface.
@@ -80,9 +80,7 @@ export class ReminderSidebarView extends ItemView {
         // Stop the time updater to prevent it from running when view is closed
         this.reminderUpdater.destroy();
         // Cancel any pending debounced renders to prevent memory leaks
-        if (this.debouncedRender && typeof this.debouncedRender.cancel === 'function') {
-            this.debouncedRender.cancel();
-        }
+        // Note: Obsidian's debounce function handles cleanup automatically
     }
 
     /**
@@ -312,34 +310,19 @@ export class ReminderSidebarView extends ItemView {
         const metaEl = contentEl.createDiv({ cls: 'reminder-meta' });
 
         // Display the reminder time in both absolute and relative formats
-        let timeDisplayText = 'No date set';
-        if (reminder.datetime) {
-            const reminderDate = new Date(reminder.datetime);
-            if (!isNaN(reminderDate.getTime())) {
-                const timeStr = format(reminderDate, DATE_FORMATS.TIME_SHORT);  // "Jan 15, 2:30 pm"
-                const relativeTime = formatDistanceToNow(reminderDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');           // "5 minutes ago"
-                timeDisplayText = `${timeStr} (${relativeTime})`;
-            } else {
-                timeDisplayText = 'Invalid date';
-            }
-        }
+        const timeDisplayText = formatTimeWithRelative(reminder.datetime, 'No date set');
         const timeSpan = metaEl.createSpan({ cls: 'time-span', text: timeDisplayText });
         // Register this element for automatic time updates
         this.reminderUpdater.addReminder(reminder, timeSpan);
 
         // If reminder is snoozed, show when it will reappear
         if (reminder.snoozedUntil) {
-            const snoozedDate = new Date(reminder.snoozedUntil);
-            if (!isNaN(snoozedDate.getTime())) {
-                const snoozeRelativeTime = formatDistanceToNow(snoozedDate, { addSuffix: true, includeSeconds: true }).replace(/^about /, '~');
-                const snoozeUntil = `${format(snoozedDate, DATE_FORMATS.TIME_SHORT)} (${snoozeRelativeTime})`;
-                const snoozeSpan = metaEl.createSpan({
-                    text: `⏰ Snoozed until ${snoozeUntil}`,
-                    cls: 'reminder-snoozed'
-                });
-                // Also register snooze time for automatic updates
-                this.reminderUpdater.addReminder(reminder, snoozeSpan);
-            }
+            const snoozeSpan = metaEl.createSpan({
+                text: formatSnoozeTime(reminder.snoozedUntil),
+                cls: 'reminder-snoozed'
+            });
+            // Also register snooze time for automatic updates
+            this.reminderUpdater.addReminder(reminder, snoozeSpan);
         }
 
         // Show category if one is assigned
@@ -378,7 +361,7 @@ export class ReminderSidebarView extends ItemView {
             const menu = new Menu();
 
             // Add snooze option only for incomplete reminders that are overdue
-            if (!reminder.completed && isBefore(new Date(reminder.datetime), new Date())) {
+            if (!reminder.completed && isInPast(reminder.datetime)) {
                 menu.addItem((item) => {
                     item.setTitle('Snooze')
                         .setIcon('alarm-clock-plus')
@@ -390,7 +373,7 @@ export class ReminderSidebarView extends ItemView {
                                 this.plugin,
                                 async (minutes: number) => {
                                     // Calculate new snooze time from current moment
-                                    const snoozeUntil = addMinutes(new Date(), minutes).toISOString();
+                                    const snoozeUntil = createSnoozeTime(minutes);
                                     await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
 
                                     // Show user-friendly confirmation message
@@ -475,7 +458,7 @@ export class ReminderSidebarView extends ItemView {
             case 'completed':
                 // Show only completed reminders, sorted by completion time (newest first)
                 reminders = reminders.filter(r => r.completed)
-                    .sort((a, b) => differenceInMilliseconds(new Date(b.completedAt || b.datetime), new Date(a.completedAt || a.datetime)));
+                    .sort(sortByCompletionTime);
                 break;
             case 'all':
                 // Show all reminders with smart sorting:
@@ -489,10 +472,10 @@ export class ReminderSidebarView extends ItemView {
                     // If both have same completion status, sort by appropriate date
                     if (a.completed && b.completed) {
                         // Both completed: newest completion first
-                        return differenceInMilliseconds(new Date(b.completedAt || b.datetime), new Date(a.completedAt || a.datetime));
+                        return sortByCompletionTime(a, b);
                     } else {
                         // Both incomplete: soonest datetime first
-                        return differenceInMilliseconds(new Date(a.datetime), new Date(b.datetime));
+                        return sortByDatetimeAsc(a, b);
                     }
                 });
                 break;

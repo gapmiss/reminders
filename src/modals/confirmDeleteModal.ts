@@ -1,6 +1,6 @@
 import { type App, Modal } from "obsidian";
 import type { Reminder } from '../types';
-import { format } from 'date-fns';
+import { formatDateDisplayLong, formatSnoozeTime } from '../utils/dateUtils';
 import { UI_CONFIG, DATE_FORMATS } from '../constants';
 
 /**
@@ -58,15 +58,7 @@ export class ConfirmDeleteModal extends Modal {
         reminderPreview.createEl('strong', { text: this.reminder.message });
 
         // Show the reminder date/time
-        let timeStr = 'No date set';
-        if (this.reminder.datetime) {
-            const reminderDate = new Date(this.reminder.datetime);
-            if (!isNaN(reminderDate.getTime())) {
-                timeStr = format(reminderDate, DATE_FORMATS.TIME_LONG);
-            } else {
-                timeStr = 'Invalid date';
-            }
-        }
+        const timeStr = formatDateDisplayLong(this.reminder.datetime, 'No date set');
         reminderPreview.createEl('div', {
             text: timeStr,
             cls: 'reminder-time'
@@ -74,14 +66,10 @@ export class ConfirmDeleteModal extends Modal {
 
         // Show snooze status if applicable
         if (this.reminder.snoozedUntil) {
-            const snoozedDate = new Date(this.reminder.snoozedUntil);
-            if (!isNaN(snoozedDate.getTime())) {
-                const snoozeUntil = `${format(snoozedDate, DATE_FORMATS.TIME_SHORT)}`;
-                const snoozeSpan = reminderPreview.createSpan({
-                    text: `⏰ Snoozed until ${snoozeUntil}`,
-                    cls: 'reminder-snoozed'
-                });
-            }
+            const snoozeSpan = reminderPreview.createSpan({
+                text: formatSnoozeTime(this.reminder.snoozedUntil),
+                cls: 'reminder-snoozed'
+            });
         }
 
         // Warning about permanence

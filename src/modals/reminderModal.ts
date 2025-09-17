@@ -1,6 +1,7 @@
 import { type App, Modal, MarkdownView, Setting, TFile, FuzzySuggestModal, Notice } from "obsidian";
 import ReminderPlugin from "../main";
-import { format, addHours, addMinutes, addDays, setHours, setMinutes, isBefore } from 'date-fns';
+import { formatForInput, createDateHoursFromNow, createTomorrow9AM, isInPast, parseDate } from '../utils/dateUtils';
+import { addMinutes } from 'date-fns';
 import type { Reminder, ReminderPriority } from '../types';
 import { UI_CONFIG, DATE_FORMATS, PRIORITY_CONFIG, CSS_CLASSES, QUICK_TIME_PRESETS } from '../constants';
 
@@ -49,17 +50,14 @@ export class ReminderModal extends Modal {
         // Initialize form data with existing data or sensible defaults
         this.formData = existingReminder ? { ...existingReminder } : {
             message: '',                                                                    // Empty message for user to fill
-            datetime: format(addHours(new Date(), UI_CONFIG.DEFAULT_HOURS_AHEAD), DATE_FORMATS.DATETIME_LOCAL),         // Default to 1 hour from now
+            datetime: formatForInput(createDateHoursFromNow(UI_CONFIG.DEFAULT_HOURS_AHEAD)),         // Default to 1 hour from now
             priority: this.plugin.settings.defaultPriority,                               // Use user's default priority setting
             category: ''                                                                   // Empty category
         };
 
         // For existing reminders, convert ISO datetime to format compatible with datetime-local input
         if (existingReminder?.datetime) {
-            const existingDate = new Date(existingReminder.datetime);
-            if (!isNaN(existingDate.getTime())) {
-                this.formData.datetime = format(existingDate, DATE_FORMATS.DATETIME_LOCAL);
-            }
+            this.formData.datetime = formatForInput(existingReminder.datetime);
         }
 
         // Auto-populate context if creating a new reminder from the active note
@@ -139,7 +137,7 @@ export class ReminderModal extends Modal {
         // Define common time presets that users frequently need
         const quickTimes = [
             ...QUICK_TIME_PRESETS,
-            { label: 'Tomorrow 9am', minutes: 0, time: setMinutes(setHours(addDays(new Date(), 1), 9), 0) }  // Next morning
+            { label: 'Tomorrow 9am', minutes: 0, time: createTomorrow9AM() }  // Next morning
         ];
 
         // Create a button for each quick time option
@@ -156,7 +154,7 @@ export class ReminderModal extends Modal {
                     newTime = addMinutes(new Date(), qt.minutes);
                 }
                 // Update the form data and refresh the datetime input
-                this.formData.datetime = format(newTime, DATE_FORMATS.DATETIME_LOCAL);
+                this.formData.datetime = formatForInput(newTime);
                 this.refreshDateTime();
             });
         });
@@ -393,7 +391,7 @@ export class ReminderModal extends Modal {
 
         // Validate that the time is in the future (for new incomplete reminders)
         // Allow past times for completed reminders or when editing
-        if (isBefore(new Date(this.formData.datetime), new Date()) && !this.formData.completed) {
+        if (isInPast(this.formData.datetime) && !this.formData.completed) {
             new Notice('Please select a future date and time');
             return;
         }
@@ -409,7 +407,8 @@ export class ReminderModal extends Modal {
         // Convert datetime to ISO format with seconds for consistent timing precision
         // The modal uses 'yyyy-MM-dd'T'HH:mm' format, but we need full ISO string for consistency with snoozedUntil
         if (finalReminder.datetime) {
-            finalReminder.datetime = new Date(finalReminder.datetime).toISOString();
+            const parsedDate = parseDate(finalReminder.datetime);
+            finalReminder.datetime = parsedDate ? parsedDate.toISOString() : finalReminder.datetime;
         }
 
         // All validation passed - submit the reminder
