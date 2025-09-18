@@ -114,7 +114,8 @@ export class ReminderDataManager {
         const result = await this.updateReminder(id, {
             completed: true,                               // Mark as completed
             completedAt: getNowISO(),   // Record when completed
-            snoozedUntil: undefined                       // Clear any active snooze
+            snoozedUntil: undefined,                      // Clear any active snooze
+            notifiedAt: undefined                         // Clear notification state
         });
 
         // Refresh the sidebar view if it's open to show the change immediately
@@ -141,7 +142,8 @@ export class ReminderDataManager {
         // Update the reminder with snooze information
         const result = await this.updateReminder(id, {
             snoozedUntil: snoozeUntil,                      // When to show again
-            snoozeCount: reminder.snoozeCount + 1          // Increment snooze counter for tracking
+            snoozeCount: reminder.snoozeCount + 1,         // Increment snooze counter for tracking
+            notifiedAt: undefined                          // Clear notification state so it can notify again when snooze expires
         });
 
         // Refresh the sidebar view and switch to snoozed tab if it's open

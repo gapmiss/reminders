@@ -34,6 +34,11 @@ export class NotificationService {
      * @param reminder - The reminder to display
      */
     async showReminder(reminder: Reminder): Promise<void> {
+        // Update the notifiedAt timestamp (for both first notifications and re-notifications)
+        await this.plugin.dataManager.updateReminder(reminder.id, {
+            notifiedAt: new Date().toISOString()
+        });
+
         // Get current user settings to determine which notification types to show
         const settings = this.plugin.settings;
 

@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, Platform } from "obsidian";
-import type { RemindersSettings, ReminderPriority } from '../types';
+import type { RemindersSettings, ReminderPriority, RenotificationInterval } from '../types';
 import { SCHEDULER_CONFIG, PRIORITY_CONFIG } from '../constants';
 
 // Re-export for backward compatibility
@@ -17,7 +17,8 @@ export const DEFAULT_SETTINGS: RemindersSettings = {
     showDebugLog: false,                                 // Don't show debug info by default (performance)
     showSystemNotification: !Platform.isMobile,         // Enable OS notifications by default (desktop only)
     showObsidianNotice: true,                           // Enable Obsidian notices by default
-    defaultPriority: 'normal'                           // Most reminders are normal priority
+    defaultPriority: 'normal',                          // Most reminders are normal priority
+    renotificationInterval: 'never'                     // Don't re-notify by default (prevents spam)
 };
 
 /**
@@ -140,6 +141,24 @@ export class RemindersSettingTab extends PluginSettingTab {
                         // Cast to the specific type to ensure type safety
                         this.plugin.settings.defaultPriority = value as 'low' | 'normal' | 'high' | 'urgent';
                         // Persist the change to disk
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Re-notification interval setting
+        // This controls how often to re-notify users for overdue reminders they haven't acted on
+        new Setting(containerEl)
+            .setName("Re-notification for overdue reminders")
+            .setDesc("How often to show notifications again for overdue reminders that haven't been completed or snoozed.")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("never", "Never (notify once)")
+                    .addOption("1hour", "Every hour")
+                    .addOption("4hours", "Every 4 hours")
+                    .addOption("24hours", "Once daily")
+                    .setValue(this.plugin.settings.renotificationInterval)
+                    .onChange(async (value) => {
+                        this.plugin.settings.renotificationInterval = value as RenotificationInterval;
                         await this.plugin.saveSettings();
                     })
             );

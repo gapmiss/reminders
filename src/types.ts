@@ -31,6 +31,7 @@ export interface Reminder {
     completedAt?: string;          // When it was completed (ISO string)
     snoozedUntil?: string;        // When snoozed reminder should reappear (ISO string)
     snoozeCount: number;          // How many times this reminder has been snoozed
+    notifiedAt?: string;          // When user was first notified about this overdue reminder (ISO string)
     created: string;              // When reminder was created (ISO string)
     updated: string;              // When reminder was last modified (ISO string)
 }
@@ -38,6 +39,11 @@ export interface Reminder {
 /**
  * Plugin settings interface for configuring reminder behavior.
  */
+/**
+ * Re-notification interval options for overdue reminders
+ */
+export type RenotificationInterval = 'never' | '1hour' | '4hours' | '24hours';
+
 export interface RemindersSettings {
     reminders: Reminder[];                    // Array of all reminder data
     fastCheckInterval: number;                // Milliseconds between checks when reminders are due soon
@@ -46,6 +52,7 @@ export interface RemindersSettings {
     showSystemNotification: boolean;          // Whether to show OS-level notifications
     showObsidianNotice: boolean;             // Whether to show Obsidian's in-app notice popup
     defaultPriority: ReminderPriority;       // Priority level assigned to new reminders by default
+    renotificationInterval: RenotificationInterval; // How often to re-notify for unactioned overdue reminders
 }
 
 /**
@@ -135,6 +142,7 @@ export function isValidReminder(obj: any): obj is Reminder {
         (obj.sourceNote === undefined || typeof obj.sourceNote === 'string') &&
         (obj.sourceLine === undefined || typeof obj.sourceLine === 'number') &&
         (obj.completedAt === undefined || (typeof obj.completedAt === 'string' && isValidISODate(obj.completedAt))) &&
-        (obj.snoozedUntil === undefined || (typeof obj.snoozedUntil === 'string' && isValidISODate(obj.snoozedUntil)))
+        (obj.snoozedUntil === undefined || (typeof obj.snoozedUntil === 'string' && isValidISODate(obj.snoozedUntil))) &&
+        (obj.notifiedAt === undefined || (typeof obj.notifiedAt === 'string' && isValidISODate(obj.notifiedAt)))
     );
 }

@@ -1,8 +1,9 @@
 import ReminderPlugin from "../main";
 import { ReminderDataManager } from "./reminderDataManager";
 import { NotificationService } from "./notificationService";
-import { addMinutes, isAfter, differenceInSeconds } from 'date-fns';
+import { addMinutes, isAfter, differenceInSeconds, differenceInHours } from 'date-fns';
 import { ErrorCategory } from '../utils/errorHandling';
+import type { RenotificationInterval } from '../types';
 
 /**
  * Scheduler service that monitors reminders and triggers notifications at the right time.
@@ -108,6 +109,42 @@ export class Scheduler {
     }
 
     /**
+     * Checks if a reminder needs re-notification based on user settings and time elapsed.
+     *
+     * @param reminder - The reminder to check
+     * @param now - Current time
+     * @returns True if the reminder should be re-notified
+     */
+    private shouldRenotify(reminder: any, now: Date): boolean {
+        const settings = this.plugin.settings;
+
+        // If re-notification is disabled, never re-notify
+        if (settings.renotificationInterval === 'never') {
+            return false;
+        }
+
+        // If reminder was never notified, it should be notified
+        if (!reminder.notifiedAt) {
+            return true;
+        }
+
+        const notifiedTime = new Date(reminder.notifiedAt);
+        const hoursSinceNotified = differenceInHours(now, notifiedTime);
+
+        // Check if enough time has passed for re-notification
+        switch (settings.renotificationInterval) {
+            case '1hour':
+                return hoursSinceNotified >= 1;
+            case '4hours':
+                return hoursSinceNotified >= 4;
+            case '24hours':
+                return hoursSinceNotified >= 24;
+            default:
+                return false;
+        }
+    }
+
+    /**
      * Checks if there are any reminders due within the next 5 minutes.
      * This helps determine whether to use fast or slow check intervals.
      *
@@ -187,9 +224,12 @@ export class Scheduler {
 
             // Process each due reminder
             for (const reminder of dueReminders) {
-                // Only process reminders we haven't already shown
-                // This prevents duplicate notifications for the same reminder
-                if (!this.processedReminders.has(reminder.id)) {
+                // Check if this reminder should be notified (first time or re-notification)
+                const shouldNotify = this.shouldRenotify(reminder, now);
+                const wasProcessedThisSession = this.processedReminders.has(reminder.id);
+
+                // Only process reminders that should be notified and haven't been processed this session
+                if (shouldNotify && !wasProcessedThisSession) {
                     // Double-check timing before triggering (final validation)
                     const exactTime = new Date(reminder.datetime);
                     const exactDiff = differenceInSeconds(exactTime, now);
@@ -199,14 +239,18 @@ export class Scheduler {
                         // Show the notification
                         await this.notificationService.showReminder(reminder);
 
-                        // Mark as processed to prevent duplicates
+                        // Mark as processed to prevent duplicates within this session
                         this.processedReminders.add(reminder.id);
 
                         // Debug logging for successful triggers
                         if (this.plugin.settings.showDebugLog) {
-                            console.log(`Precisely triggered reminder: ${reminder.message}`);
+                            const isRenotification = !!reminder.notifiedAt;
+                            console.log(`${isRenotification ? 'Re-triggered' : 'Precisely triggered'} reminder: ${reminder.message}`);
                         }
                     }
+                } else if (!shouldNotify && reminder.notifiedAt && this.plugin.settings.showDebugLog) {
+                    // Debug logging for skipped already-notified reminders
+                    console.log(`Skipping already notified reminder: ${reminder.message} (notified at: ${reminder.notifiedAt})`);
                 }
             }
 
