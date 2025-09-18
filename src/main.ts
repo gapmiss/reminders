@@ -285,42 +285,11 @@ export default class ReminderPlugin extends Plugin {
 	private async handleReminderSubmission(reminderData: Reminder, isEdit: boolean) {
 		const result = await this.errorHandler.safeAsync(
 			async () => {
-				let reminder: Reminder;
+				const reminder = await this.processReminderData(reminderData, isEdit);
+				if (!reminder) return null;
 
-				if (isEdit) {
-					// Update an existing reminder
-					const updatedReminder = await this.dataManager.updateReminder(reminderData.id, reminderData);
-					if (!updatedReminder) {
-						// Handle case where reminder was deleted by another process
-						this.errorHandler.handleDataError(
-							'Reminder not found during update operation',
-							undefined,
-							{ reminderId: reminderData.id }
-						);
-						return null;
-					}
-					reminder = updatedReminder;
-					new Notice(`Reminder updated: ${reminder.message}`);
-				} else {
-					// Create a brand new reminder
-					reminder = await this.dataManager.createReminder(reminderData);
-					new Notice(`Reminder created: ${reminder.message}`);
-				}
-
-				// Refresh the sidebar view if it's currently open
-				// This ensures the UI stays in sync with the data
-				if (this.sidebarView) {
-					if (isEdit) {
-						// For edits, just refresh without changing tabs
-						this.sidebarView.refresh();
-					} else {
-						// For new reminders, switch to upcoming tab to show the new reminder
-						this.sidebarView.setFilter('upcoming');
-					}
-				}
-
-				// Tell the scheduler to immediately re-evaluate all reminders
-				// This ensures new/updated reminders are scheduled correctly
+				this.showReminderNotification(reminder, isEdit);
+				this.updateSidebarView(isEdit);
 				this.scheduler.scheduleImmediate();
 
 				return reminder;
@@ -336,6 +305,81 @@ export default class ReminderPlugin extends Plugin {
 
 		// If the operation failed, result will be null and error was already handled
 		return result;
+	}
+
+	/**
+	 * Processes reminder data by either creating a new reminder or updating an existing one.
+	 *
+	 * @param reminderData - The reminder data to process
+	 * @param isEdit - True if editing existing reminder, false if creating new one
+	 * @returns The processed reminder or null if operation failed
+	 */
+	private async processReminderData(reminderData: Reminder, isEdit: boolean): Promise<Reminder | null> {
+		if (isEdit) {
+			return await this.updateExistingReminder(reminderData);
+		} else {
+			return await this.createNewReminder(reminderData);
+		}
+	}
+
+	/**
+	 * Updates an existing reminder with new data.
+	 *
+	 * @param reminderData - The updated reminder data
+	 * @returns The updated reminder or null if not found
+	 */
+	private async updateExistingReminder(reminderData: Reminder): Promise<Reminder | null> {
+		const updatedReminder = await this.dataManager.updateReminder(reminderData.id, reminderData);
+		if (!updatedReminder) {
+			// Handle case where reminder was deleted by another process
+			this.errorHandler.handleDataError(
+				'Reminder not found during update operation',
+				undefined,
+				{ reminderId: reminderData.id }
+			);
+			return null;
+		}
+		return updatedReminder;
+	}
+
+	/**
+	 * Creates a new reminder.
+	 *
+	 * @param reminderData - The reminder data to create
+	 * @returns The created reminder
+	 */
+	private async createNewReminder(reminderData: Reminder): Promise<Reminder> {
+		return await this.dataManager.createReminder(reminderData);
+	}
+
+	/**
+	 * Shows appropriate notification message to the user.
+	 *
+	 * @param reminder - The processed reminder
+	 * @param isEdit - True if this was an edit operation, false if creation
+	 */
+	private showReminderNotification(reminder: Reminder, isEdit: boolean): void {
+		const action = isEdit ? 'updated' : 'created';
+		new Notice(`Reminder ${action}: ${reminder.message}`);
+	}
+
+	/**
+	 * Updates the sidebar view to reflect the changes.
+	 *
+	 * @param isEdit - True if this was an edit operation, false if creation
+	 */
+	private updateSidebarView(isEdit: boolean): void {
+		// Refresh the sidebar view if it's currently open
+		// This ensures the UI stays in sync with the data
+		if (this.sidebarView) {
+			if (isEdit) {
+				// For edits, just refresh without changing tabs
+				this.sidebarView.refresh();
+			} else {
+				// For new reminders, switch to upcoming tab to show the new reminder
+				this.sidebarView.setFilter('upcoming');
+			}
+		}
 	}
 
 	/**

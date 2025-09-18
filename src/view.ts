@@ -291,12 +291,35 @@ export class ReminderSidebarView extends ItemView {
      * @param reminder - The reminder data to display
      */
     private createReminderItem(container: HTMLElement, reminder: Reminder) {
+        const itemEl = this.createReminderContainer(container, reminder);
+        this.addCompletionToggle(itemEl, reminder);
+        const contentEl = this.createReminderContent(itemEl, reminder);
+        this.createReminderMetadata(contentEl, reminder);
+        this.createReminderActions(itemEl, reminder);
+    }
+
+    /**
+     * Creates the main container element for a reminder item with appropriate CSS classes.
+     *
+     * @param container - The parent element to add this reminder item to
+     * @param reminder - The reminder data to determine CSS classes
+     * @returns The created reminder item container element
+     */
+    private createReminderContainer(container: HTMLElement, reminder: Reminder): HTMLElement {
         // Create the main container for this reminder item
         // CSS classes help with styling and indicate the reminder's state
-        const itemEl = container.createDiv({
+        return container.createDiv({
             cls: `reminder-item priority-${reminder.priority} ${reminder.completed ? 'completed' : ''} ${reminder.snoozedUntil ? 'snoozed' : ''}`
         });
+    }
 
+    /**
+     * Adds a completion toggle checkbox to a reminder item.
+     *
+     * @param itemEl - The reminder item container element
+     * @param reminder - The reminder data
+     */
+    private addCompletionToggle(itemEl: HTMLElement, reminder: Reminder) {
         // Add a completion toggle checkbox using Obsidian's Setting component
         new Setting(itemEl)
             .addToggle(toggle => toggle
@@ -317,25 +340,65 @@ export class ReminderSidebarView extends ItemView {
                     this.debouncedRender();
                 })
             );
+    }
 
+    /**
+     * Creates the main content area for reminder details.
+     *
+     * @param itemEl - The reminder item container element
+     * @param reminder - The reminder data
+     * @returns The created content container element
+     */
+    private createReminderContent(itemEl: HTMLElement, reminder: Reminder): HTMLElement {
         // Create the main content area for reminder details
         const contentEl = itemEl.createDiv({ cls: 'reminder-content' });
 
         // Display the reminder message (main text)
-        const messageEl = contentEl.createDiv({
+        contentEl.createDiv({
             text: reminder.message,
             cls: 'reminder-message'
         });
 
+        return contentEl;
+    }
+
+    /**
+     * Creates and populates the metadata section for a reminder (time, category, source note, etc.).
+     *
+     * @param contentEl - The content container element
+     * @param reminder - The reminder data
+     */
+    private createReminderMetadata(contentEl: HTMLElement, reminder: Reminder) {
         // Create container for metadata (time, category, source note, etc.)
         const metaEl = contentEl.createDiv({ cls: 'reminder-meta' });
 
+        this.addTimeDisplay(metaEl, reminder);
+        this.addSnoozeDisplay(metaEl, reminder);
+        this.addCategoryDisplay(metaEl, reminder);
+        this.addSourceNoteLink(metaEl, reminder);
+    }
+
+    /**
+     * Adds time display to the metadata section.
+     *
+     * @param metaEl - The metadata container element
+     * @param reminder - The reminder data
+     */
+    private addTimeDisplay(metaEl: HTMLElement, reminder: Reminder) {
         // Display the reminder time in both absolute and relative formats
         const timeDisplayText = formatTimeWithRelative(reminder.datetime, 'No date set');
         const timeSpan = metaEl.createSpan({ cls: 'time-span', text: timeDisplayText });
         // Register this element for automatic time updates
         this.reminderUpdater.addReminder(reminder, timeSpan);
+    }
 
+    /**
+     * Adds snooze display to the metadata section if the reminder is snoozed.
+     *
+     * @param metaEl - The metadata container element
+     * @param reminder - The reminder data
+     */
+    private addSnoozeDisplay(metaEl: HTMLElement, reminder: Reminder) {
         // If reminder is snoozed, show when it will reappear
         if (reminder.snoozedUntil) {
             const snoozeSpan = metaEl.createSpan({
@@ -345,7 +408,15 @@ export class ReminderSidebarView extends ItemView {
             // Also register snooze time for automatic updates
             this.reminderUpdater.addReminder(reminder, snoozeSpan);
         }
+    }
 
+    /**
+     * Adds category display to the metadata section if the reminder has a category.
+     *
+     * @param metaEl - The metadata container element
+     * @param reminder - The reminder data
+     */
+    private addCategoryDisplay(metaEl: HTMLElement, reminder: Reminder) {
         // Show category if one is assigned
         if (reminder.category) {
             metaEl.createSpan({
@@ -353,7 +424,15 @@ export class ReminderSidebarView extends ItemView {
                 cls: 'reminder-category'
             });
         }
+    }
 
+    /**
+     * Adds a clickable source note link to the metadata section if the reminder has a linked note.
+     *
+     * @param metaEl - The metadata container element
+     * @param reminder - The reminder data
+     */
+    private addSourceNoteLink(metaEl: HTMLElement, reminder: Reminder) {
         // Show linked source note with clickable link to open it
         if (reminder.sourceNote) {
             const noteLink = metaEl.createEl('a', {
@@ -366,7 +445,15 @@ export class ReminderSidebarView extends ItemView {
                 this.app.workspace.openLinkText(reminder.sourceNote!, '');
             });
         }
+    }
 
+    /**
+     * Creates the actions menu button for a reminder item.
+     *
+     * @param itemEl - The reminder item container element
+     * @param reminder - The reminder data
+     */
+    private createReminderActions(itemEl: HTMLElement, reminder: Reminder) {
         // Create container for action button (ellipsis menu)
         const actionsEl = itemEl.createDiv({ cls: 'reminder-item-actions' });
 
@@ -378,80 +465,138 @@ export class ReminderSidebarView extends ItemView {
         setIcon(menuBtn, 'more-horizontal');
 
         menuBtn.addEventListener('click', (event) => {
-            // Create and show context menu
-            const menu = new Menu();
-
-            // Add snooze option only for incomplete reminders that are overdue
-            if (!reminder.completed && isInPast(reminder.datetime)) {
-                menu.addItem((item) => {
-                    item.setTitle('Snooze')
-                        .setIcon('alarm-clock-plus')
-                        .onClick(() => {
-                            // Open snooze modal to let user choose how long to snooze
-                            const modal = new SnoozeSuggestModal(
-                                this.app,
-                                reminder,
-                                this.plugin,
-                                async (minutes: number) => {
-                                    // Calculate new snooze time from current moment
-                                    const snoozeUntil = createSnoozeTime(minutes);
-                                    await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
-
-                                    // Show user-friendly confirmation message
-                                    const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
-                                    new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
-
-                                    // Refresh view to reflect the change
-                                    this.debouncedRender();
-                                }
-                            );
-                            modal.open();
-                        });
-                });
-            }
-
-            // Add edit option - always available for all reminders
-            menu.addItem((item) => {
-                item.setTitle('Edit')
-                    .setIcon('pencil')
-                    .onClick(() => {
-                        // Open the reminder modal in edit mode with current reminder data
-                        this.plugin.openReminderModal(reminder);
-                    });
-            });
-
-            // Add delete option - always available for all reminders
-            menu.addItem((item) => {
-                item.setTitle('Delete')
-                    .setIcon('trash')
-                    .onClick(() => {
-                        // Show confirmation modal before actually deleting
-                        // This prevents accidental deletions
-                        const confirmModal = new ConfirmDeleteModal(
-                            this.app,
-                            reminder,
-                            async () => {
-                                // This callback runs if user confirms the deletion
-                                await this.plugin.dataManager.deleteReminder(reminder.id);
-                                new Notice('Reminder deleted');
-                                // Refresh view to remove the deleted item
-                                this.debouncedRender();
-                            }
-                        );
-                        confirmModal.open();
-                    });
-            });
-
-            // Show the menu at the button position (works for both mouse and keyboard)
-            if (event.type === 'click' && event.detail === 0) {
-                // Keyboard activation (Enter/Space) - position menu at button
-                const rect = menuBtn.getBoundingClientRect();
-                menu.showAtPosition({ x: rect.left, y: rect.bottom });
-            } else {
-                // Mouse click - use mouse position
-                menu.showAtMouseEvent(event);
-            }
+            this.showReminderContextMenu(event, reminder);
         });
+    }
+
+    /**
+     * Shows the context menu for a reminder item with available actions.
+     *
+     * @param event - The click event to position the menu
+     * @param reminder - The reminder data
+     */
+    private showReminderContextMenu(event: Event, reminder: Reminder) {
+        // Create and show context menu
+        const menu = new Menu();
+
+        this.addSnoozeMenuItem(menu, reminder);
+        this.addEditMenuItem(menu, reminder);
+        this.addDeleteMenuItem(menu, reminder);
+
+        // Show the menu at the button position (works for both mouse and keyboard)
+        const mouseEvent = event as MouseEvent;
+        if (event.type === 'click' && mouseEvent.detail === 0) {
+            // Keyboard activation (Enter/Space) - position menu at button
+            const target = event.target as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+        } else {
+            // Mouse click - use mouse position
+            menu.showAtMouseEvent(mouseEvent);
+        }
+    }
+
+    /**
+     * Adds snooze menu item to the context menu (only for overdue reminders).
+     *
+     * @param menu - The context menu
+     * @param reminder - The reminder data
+     */
+    private addSnoozeMenuItem(menu: Menu, reminder: Reminder) {
+        // Add snooze option only for incomplete reminders that are overdue
+        if (!reminder.completed && isInPast(reminder.datetime)) {
+            menu.addItem((item) => {
+                item.setTitle('Snooze')
+                    .setIcon('alarm-clock-plus')
+                    .onClick(() => {
+                        this.handleSnoozeAction(reminder);
+                    });
+            });
+        }
+    }
+
+    /**
+     * Adds edit menu item to the context menu.
+     *
+     * @param menu - The context menu
+     * @param reminder - The reminder data
+     */
+    private addEditMenuItem(menu: Menu, reminder: Reminder) {
+        // Add edit option - always available for all reminders
+        menu.addItem((item) => {
+            item.setTitle('Edit')
+                .setIcon('pencil')
+                .onClick(() => {
+                    // Open the reminder modal in edit mode with current reminder data
+                    this.plugin.openReminderModal(reminder);
+                });
+        });
+    }
+
+    /**
+     * Adds delete menu item to the context menu.
+     *
+     * @param menu - The context menu
+     * @param reminder - The reminder data
+     */
+    private addDeleteMenuItem(menu: Menu, reminder: Reminder) {
+        // Add delete option - always available for all reminders
+        menu.addItem((item) => {
+            item.setTitle('Delete')
+                .setIcon('trash')
+                .onClick(() => {
+                    this.handleDeleteAction(reminder);
+                });
+        });
+    }
+
+    /**
+     * Handles the snooze action for a reminder.
+     *
+     * @param reminder - The reminder to snooze
+     */
+    private handleSnoozeAction(reminder: Reminder) {
+        // Open snooze modal to let user choose how long to snooze
+        const modal = new SnoozeSuggestModal(
+            this.app,
+            reminder,
+            this.plugin,
+            async (minutes: number) => {
+                // Calculate new snooze time from current moment
+                const snoozeUntil = createSnoozeTime(minutes);
+                await this.plugin.dataManager.snoozeReminder(reminder.id, snoozeUntil);
+
+                // Show user-friendly confirmation message
+                const timeLabel = minutes === 1 ? '1 minute' : `${minutes} minutes`;
+                new Notice(`⏰ Reminder snoozed for ${timeLabel}`);
+
+                // Refresh view to reflect the change
+                this.debouncedRender();
+            }
+        );
+        modal.open();
+    }
+
+    /**
+     * Handles the delete action for a reminder.
+     *
+     * @param reminder - The reminder to delete
+     */
+    private handleDeleteAction(reminder: Reminder) {
+        // Show confirmation modal before actually deleting
+        // This prevents accidental deletions
+        const confirmModal = new ConfirmDeleteModal(
+            this.app,
+            reminder,
+            async () => {
+                // This callback runs if user confirms the deletion
+                await this.plugin.dataManager.deleteReminder(reminder.id);
+                new Notice('Reminder deleted');
+                // Refresh view to remove the deleted item
+                this.debouncedRender();
+            }
+        );
+        confirmModal.open();
     }
 
     /**
