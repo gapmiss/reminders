@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, Platform } from "obsidian";
 import type { RemindersSettings, ReminderPriority } from '../types';
 import { SCHEDULER_CONFIG, PRIORITY_CONFIG } from '../constants';
 
@@ -15,7 +15,7 @@ export const DEFAULT_SETTINGS: RemindersSettings = {
     fastCheckInterval: SCHEDULER_CONFIG.FAST_CHECK_INTERVAL,     // Check every 5 seconds when reminders are due soon
     slowCheckInterval: SCHEDULER_CONFIG.SLOW_CHECK_INTERVAL,     // Check every 30 seconds when no urgent reminders
     showDebugLog: false,                                 // Don't show debug info by default (performance)
-    showSystemNotification: true,                        // Enable OS notifications by default
+    showSystemNotification: !Platform.isMobile,         // Enable OS notifications by default (desktop only)
     showObsidianNotice: true,                           // Enable Obsidian notices by default
     defaultPriority: 'normal'                           // Most reminders are normal priority
 };
@@ -67,19 +67,42 @@ export class RemindersSettingTab extends PluginSettingTab {
         // System notifications setting
         // This controls whether reminders trigger OS-level notifications (the kind that appear
         // in the system notification center/area)
-        new Setting(containerEl)
+        // Note: System notifications are not available on mobile platforms
+        const systemNotificationSetting = new Setting(containerEl)
             .setName("System notifications")
-            .setDesc("Show system notifications when reminders are triggered.")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showSystemNotification) // Set current value
-                    .onChange(async (value) => {
-                        // Update the setting when user toggles
-                        this.plugin.settings.showSystemNotification = value;
-                        // Persist the change to disk
-                        await this.plugin.saveSettings();
-                    })
+            .setDesc(Platform.isMobile
+                ? "System notifications are not available on mobile devices."
+                : "Show system notifications when reminders are triggered."
             );
+
+        if (Platform.isMobile) {
+            // On mobile, disable the setting and show why
+            systemNotificationSetting
+                .setDisabled(true)
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(false)
+                        .setDisabled(true)
+                );
+            // Ensure the setting is disabled in the plugin settings
+            if (this.plugin.settings.showSystemNotification) {
+                this.plugin.settings.showSystemNotification = false;
+                this.plugin.saveSettings();
+            }
+        } else {
+            // On desktop, show normal toggle
+            systemNotificationSetting
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(this.plugin.settings.showSystemNotification) // Set current value
+                        .onChange(async (value) => {
+                            // Update the setting when user toggles
+                            this.plugin.settings.showSystemNotification = value;
+                            // Persist the change to disk
+                            await this.plugin.saveSettings();
+                        })
+                );
+        }
 
         // Obsidian notices setting
         // This controls whether reminders show as Obsidian's built-in Notice popups

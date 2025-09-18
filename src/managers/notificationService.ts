@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { Notice, Platform } from "obsidian";
 import ReminderPlugin from "../main";
 import type { Reminder } from '../types';
 import { SnoozeSuggestModal } from "../modals/snoozeSuggestModal";
@@ -43,9 +43,9 @@ export class NotificationService {
             this.showObsidianNotice(reminder);
         }
 
-        // Show OS system notification if user has this enabled
-        // This appears in the system notification center/area
-        if (settings.showSystemNotification) {
+        // Show OS system notification if user has this enabled and not on mobile
+        // System notifications are not supported on mobile platforms
+        if (settings.showSystemNotification && !Platform.isMobile) {
             await this.showSystemNotification(reminder);
         }
     }
@@ -145,12 +145,22 @@ export class NotificationService {
     private async showSystemNotification(reminder: Reminder): Promise<void> {
         await this.plugin.errorHandler.safeAsync(
             async () => {
+                // Check if we're on mobile platform first
+                if (Platform.isMobile) {
+                    this.plugin.errorHandler.handleNotificationError(
+                        'System notifications not supported on mobile platform',
+                        undefined,
+                        { reminderId: reminder.id, platform: 'mobile' }
+                    );
+                    return;
+                }
+
                 // Check if the browser supports the Notification API
                 if (!('Notification' in window)) {
                     this.plugin.errorHandler.handleNotificationError(
                         'Browser does not support system notifications',
                         undefined,
-                        { reminderId: reminder.id }
+                        { reminderId: reminder.id, platform: 'desktop' }
                     );
                     return;
                 }
