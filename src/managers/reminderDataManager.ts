@@ -55,6 +55,12 @@ export class ReminderDataManager {
         this.plugin.settings.reminders.push(reminder);
         // Persist changes to disk
         await this.plugin.saveSettings();
+
+        // Refresh the sidebar view if it's open to show the new reminder immediately
+        if (this.plugin.sidebarView) {
+            this.plugin.sidebarView.refresh();
+        }
+
         return reminder;
     }
 
@@ -99,6 +105,12 @@ export class ReminderDataManager {
         this.plugin.settings.reminders.splice(index, 1);
         // Persist changes to disk
         await this.plugin.saveSettings();
+
+        // Refresh the sidebar view if it's open to show the change immediately
+        if (this.plugin.sidebarView) {
+            this.plugin.sidebarView.refresh();
+        }
+
         return true;
     }
 

@@ -234,6 +234,12 @@ export default class ReminderPlugin extends Plugin {
 
 		// Bring the sidebar into focus/make it visible
 		workspace.revealLeaf(leaf);
+
+		// Ensure the view is properly initialized and rendered
+		// This is needed because Obsidian doesn't always call onOpen() automatically
+		if (this.sidebarView && this.sidebarView.onOpen) {
+			await this.sidebarView.onOpen();
+		}
 	}
 
 	/**

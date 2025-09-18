@@ -68,8 +68,19 @@ export class ReminderSidebarView extends ItemView {
     async onOpen() {
         // Initialize the time updater service that keeps relative times current
         this.reminderUpdater = new ReminderTimeUpdater();
-        // Render the initial view content
-        this.render();
+
+        // Ensure plugin and dataManager are fully initialized before rendering
+        if (this.plugin && this.plugin.dataManager) {
+            // Render the initial view content
+            this.render();
+        } else {
+            // If not ready, wait a bit and try again
+            setTimeout(() => {
+                if (this.plugin && this.plugin.dataManager) {
+                    this.render();
+                }
+            }, 100);
+        }
     }
 
     /**
