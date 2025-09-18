@@ -133,11 +133,12 @@ export class ReminderSidebarView extends ItemView {
         // Create container for action buttons
         const actionsEl = headerEl.createDiv({ cls: 'reminder-actions' });
 
-        // "+ New" button for creating reminders
+        // "+" button with concierge-bell icon for creating reminders
         const newBtn = actionsEl.createEl('button', {
-            text: '+ New',
-            cls: 'mod-cta'  // Obsidian's call-to-action button style
+            text: '+',
+            cls: 'mod-cta new-reminder-btn'  // Obsidian's call-to-action button style + custom class
         });
+        setIcon(newBtn, ICONS.BELL);  // Add concierge-bell icon
         newBtn.addEventListener('click', () => {
             // Open the reminder creation modal
             this.plugin.openReminderModal();
@@ -180,6 +181,15 @@ export class ReminderSidebarView extends ItemView {
             setTimeout(() => {
                 spinner.remove();
             }, UI_CONFIG.SPINNER_DELAY);
+        });
+
+        // Ellipse menu button for bulk actions
+        const ellipseBtn = actionsEl.createEl('button', {
+            cls: 'ellipse-menu-btn'
+        });
+        setIcon(ellipseBtn, 'more-horizontal');  // Use Obsidian's ellipse icon
+        ellipseBtn.addEventListener('click', (e) => {
+            this.showEllipseMenu(e);
         });
     }
 
@@ -503,6 +513,123 @@ export class ReminderSidebarView extends ItemView {
     setFilter(filter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed') {
         this.currentFilter = filter;
         this.render();
+    }
+
+    /**
+     * Shows the ellipse menu with bulk action options.
+     *
+     * @param event - Click event to position the menu
+     */
+    private showEllipseMenu(event: Event) {
+        const menu = new Menu();
+
+        // Get statistics to determine if options should be enabled
+        const stats = this.plugin.dataManager.getStatistics();
+
+        // Delete completed reminders option
+        menu.addItem((item) => {
+            item.setTitle('Delete completed')
+                .setIcon(ICONS.TRASH)
+                .setDisabled(stats.completed === 0)
+                .onClick(() => {
+                    this.confirmDeleteCompleted();
+                });
+        });
+
+        // Delete all reminders option
+        menu.addItem((item) => {
+            item.setTitle('Delete all')
+                .setIcon(ICONS.TRASH)
+                .setDisabled(stats.total === 0)
+                .onClick(() => {
+                    this.confirmDeleteAll();
+                });
+        });
+
+        // Show the menu at the click position
+        menu.showAtMouseEvent(event as MouseEvent);
+    }
+
+    /**
+     * Shows confirmation dialog for deleting completed reminders.
+     */
+    private async confirmDeleteCompleted() {
+        const stats = this.plugin.dataManager.getStatistics();
+        const count = stats.completed;
+
+        if (count === 0) {
+            new Notice('No completed reminders to delete');
+            return;
+        }
+
+        const message = `Are you sure you want to delete ${count} completed reminder${count > 1 ? 's' : ''}?`;
+
+        const confirmed = await this.showConfirmDialog(
+            'Delete Completed Reminders',
+            message,
+            'This action cannot be undone.',
+            'Delete Completed'
+        );
+
+        if (confirmed) {
+            await this.plugin.dataManager.deleteCompleted();
+            new Notice(`Deleted ${count} completed reminder${count > 1 ? 's' : ''}`);
+            this.refresh();
+        }
+    }
+
+    /**
+     * Shows confirmation dialog for deleting all reminders.
+     */
+    private async confirmDeleteAll() {
+        const stats = this.plugin.dataManager.getStatistics();
+        const count = stats.total;
+
+        if (count === 0) {
+            new Notice('No reminders to delete');
+            return;
+        }
+
+        const message = `Are you sure you want to delete ALL ${count} reminder${count > 1 ? 's' : ''}?`;
+
+        const confirmed = await this.showConfirmDialog(
+            'Delete All Reminders',
+            message,
+            'This action cannot be undone and will remove all reminders regardless of their status.',
+            'Delete All'
+        );
+
+        if (confirmed) {
+            await this.plugin.dataManager.deleteAll();
+            new Notice(`Deleted all ${count} reminder${count > 1 ? 's' : ''}`);
+            this.refresh();
+        }
+    }
+
+    /**
+     * Shows a confirmation dialog with custom message and buttons.
+     *
+     * @param title - Dialog title
+     * @param message - Main message
+     * @param warning - Warning text
+     * @param confirmButtonText - Text for confirm button
+     * @returns Promise that resolves to true if confirmed, false if cancelled
+     */
+    private showConfirmDialog(title: string, message: string, warning: string, confirmButtonText: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            const modal = new ConfirmDeleteModal(
+                this.app,
+                {
+                    title,
+                    message,
+                    warning,
+                    confirmButtonText,
+                    onConfirm: () => resolve(true),
+                    onCancel: () => resolve(false)
+                }
+            );
+            modal.open();
+        });
     }
 
     /**

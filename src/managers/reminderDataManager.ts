@@ -115,6 +115,56 @@ export class ReminderDataManager {
     }
 
     /**
+     * Deletes all completed reminders.
+     *
+     * @returns Promise that resolves to the number of reminders deleted
+     */
+    async deleteCompleted(): Promise<number> {
+        // Find all completed reminders
+        const completedReminders = this.plugin.settings.reminders.filter(r => r.completed);
+        const count = completedReminders.length;
+
+        if (count === 0) return 0;
+
+        // Remove completed reminders from the array
+        this.plugin.settings.reminders = this.plugin.settings.reminders.filter(r => !r.completed);
+
+        // Persist changes to disk
+        await this.plugin.saveSettings();
+
+        // Refresh the sidebar view if it's open to show the changes immediately
+        if (this.plugin.sidebarView) {
+            this.plugin.sidebarView.refresh();
+        }
+
+        return count;
+    }
+
+    /**
+     * Deletes all reminders regardless of status.
+     *
+     * @returns Promise that resolves to the number of reminders deleted
+     */
+    async deleteAll(): Promise<number> {
+        const count = this.plugin.settings.reminders.length;
+
+        if (count === 0) return 0;
+
+        // Clear all reminders
+        this.plugin.settings.reminders = [];
+
+        // Persist changes to disk
+        await this.plugin.saveSettings();
+
+        // Refresh the sidebar view if it's open to show the changes immediately
+        if (this.plugin.sidebarView) {
+            this.plugin.sidebarView.refresh();
+        }
+
+        return count;
+    }
+
+    /**
      * Marks a reminder as completed.
      * This sets the completed flag, records completion time, and clears any snooze.
      *

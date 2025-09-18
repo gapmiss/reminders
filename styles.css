@@ -49,6 +49,36 @@
 .reminder-sidebar .reminder-actions {
     display: flex;
     gap: var(--size-4-2);
+    align-items: center;
+}
+
+/* New reminder button with icon */
+.reminder-sidebar .new-reminder-btn {
+    padding: var(--size-2-2) var(--size-4-2);
+}
+
+.reminder-sidebar .new-reminder-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Ellipse menu button */
+.reminder-sidebar .ellipse-menu-btn {
+    padding: var(--size-2-2) var(--size-2-3);
+}
+
+.reminder-sidebar .ellipse-menu-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.refresh-button {
+    padding: var(--size-2-2) var(--size-4-2);
+}
+
+.refresh-button svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* ===================================================================
@@ -332,7 +362,7 @@
    NOTIFICATION STYLES
    =================================================================== */
 
-.reminder-notice > div > div {
+.reminder-notice>div>div {
     padding: var(--size-4-1) var(--size-2-1);
 }
 
@@ -416,14 +446,36 @@
    =================================================================== */
 
 @keyframes reminder-bell-shake {
-    0%, 100% { transform: rotate(0deg); }
-    10%, 30%, 50%, 70%, 90% { transform: rotate(-8deg); }
-    20%, 40%, 60%, 80% { transform: rotate(8deg); }
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: rotate(-8deg);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: rotate(8deg);
+    }
 }
 
 @keyframes reminder-spinner-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes reminder-spinner-dash {
@@ -431,10 +483,12 @@
         stroke-dasharray: 1, 150;
         stroke-dashoffset: 0;
     }
+
     50% {
         stroke-dasharray: 90, 150;
         stroke-dashoffset: -35;
     }
+
     100% {
         stroke-dasharray: 90, 150;
         stroke-dashoffset: -124;
