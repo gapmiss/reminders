@@ -301,6 +301,33 @@
     margin-top: var(--size-4-5);
 }
 
+/* Delete modal */
+.confirm-delete-modal .reminder-preview {
+    background: var(--background-secondary);
+    padding: var(--size-4-3);
+    margin: var(--size-4-3) 0;
+    border-left: 3px solid var(--text-error);
+}
+
+.confirm-delete-modal .reminder-time {
+    font-size: var(--font-smaller);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
+}
+
+.confirm-delete-modal .warning-text {
+    color: var(--text-error);
+    font-size: var(--font-smaller);
+    margin-top: var(--size-4-2);
+}
+
+.confirm-delete-modal .confirm-buttons {
+    display: flex;
+    gap: var(--size-4-2);
+    justify-content: flex-end;
+    margin-top: var(--size-4-5);
+}
+
 /* ===================================================================
    NOTIFICATION STYLES
    =================================================================== */
