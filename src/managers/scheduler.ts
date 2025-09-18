@@ -118,14 +118,14 @@ export class Scheduler {
     private shouldRenotify(reminder: any, now: Date): boolean {
         const settings = this.plugin.settings;
 
-        // If re-notification is disabled, never re-notify
-        if (settings.renotificationInterval === 'never') {
-            return false;
-        }
-
-        // If reminder was never notified, it should be notified
+        // If reminder was never notified, it should ALWAYS be notified (first time)
         if (!reminder.notifiedAt) {
             return true;
+        }
+
+        // If re-notification is disabled, don't re-notify (but first notification already happened)
+        if (settings.renotificationInterval === 'never') {
+            return false;
         }
 
         const notifiedTime = new Date(reminder.notifiedAt);
