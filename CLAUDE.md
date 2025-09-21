@@ -316,6 +316,16 @@ src/
 - **Graceful degradation**: Invalid dates show meaningful fallback text instead of causing crashes
 - **Runtime stability**: Fixed "Invalid time value" errors that occurred when completing snoozed reminders
 
+### Re-notification System Overhaul (2025)
+- **Fixed critical bug**: Re-notifications were blocked by the processedReminders Set after first notification
+- **Enhanced timing logic**: Separated first-time vs re-notification validation logic for better accuracy
+- **Expanded interval options**: Added granular re-notification intervals from 30 seconds to 24 hours
+  - **Testing-friendly intervals**: 30 seconds, 1 minute, 2 minutes for development and testing
+  - **Practical intervals**: 5, 10, 15, 30 minutes for user workflows
+  - **Extended intervals**: 2, 8, 12 hours for long-term reminders
+- **Improved scheduler logic**: Re-notifications now properly clear processed state when interval time elapses
+- **Precise time calculations**: Uses date-fns functions for accurate seconds, minutes, and hours differences
+
 ## Security Considerations
 
 ### Data Storage

@@ -42,7 +42,21 @@ export interface Reminder {
 /**
  * Re-notification interval options for overdue reminders
  */
-export type RenotificationInterval = 'never' | '1hour' | '4hours' | '24hours';
+export type RenotificationInterval =
+    | 'never'
+    | '30seconds'
+    | '1minute'
+    | '2minutes'
+    | '5minutes'
+    | '10minutes'
+    | '15minutes'
+    | '30minutes'
+    | '1hour'
+    | '2hours'
+    | '4hours'
+    | '8hours'
+    | '12hours'
+    | '24hours';
 
 export interface RemindersSettings {
     reminders: Reminder[];                    // Array of all reminder data

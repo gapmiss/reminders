@@ -1,7 +1,7 @@
 import ReminderPlugin from "../main";
 import { ReminderDataManager } from "./reminderDataManager";
 import { NotificationService } from "./notificationService";
-import { addMinutes, isAfter, differenceInSeconds, differenceInHours } from 'date-fns';
+import { addMinutes, isAfter, differenceInSeconds, differenceInHours, differenceInMinutes } from 'date-fns';
 import { ErrorCategory } from '../utils/errorHandling';
 import type { RenotificationInterval } from '../types';
 
@@ -129,14 +129,36 @@ export class Scheduler {
         }
 
         const notifiedTime = new Date(reminder.notifiedAt);
+        const secondsSinceNotified = differenceInSeconds(now, notifiedTime);
+        const minutesSinceNotified = differenceInMinutes(now, notifiedTime);
         const hoursSinceNotified = differenceInHours(now, notifiedTime);
 
         // Check if enough time has passed for re-notification
         switch (settings.renotificationInterval) {
+            case '30seconds':
+                return secondsSinceNotified >= 30;
+            case '1minute':
+                return minutesSinceNotified >= 1;
+            case '2minutes':
+                return minutesSinceNotified >= 2;
+            case '5minutes':
+                return minutesSinceNotified >= 5;
+            case '10minutes':
+                return minutesSinceNotified >= 10;
+            case '15minutes':
+                return minutesSinceNotified >= 15;
+            case '30minutes':
+                return minutesSinceNotified >= 30;
             case '1hour':
                 return hoursSinceNotified >= 1;
+            case '2hours':
+                return hoursSinceNotified >= 2;
             case '4hours':
                 return hoursSinceNotified >= 4;
+            case '8hours':
+                return hoursSinceNotified >= 8;
+            case '12hours':
+                return hoursSinceNotified >= 12;
             case '24hours':
                 return hoursSinceNotified >= 24;
             default:
@@ -228,14 +250,29 @@ export class Scheduler {
                 const shouldNotify = this.shouldRenotify(reminder, now);
                 const wasProcessedThisSession = this.processedReminders.has(reminder.id);
 
-                // Only process reminders that should be notified and haven't been processed this session
-                if (shouldNotify && !wasProcessedThisSession) {
-                    // Double-check timing before triggering (final validation)
-                    const exactTime = new Date(reminder.datetime);
-                    const exactDiff = differenceInSeconds(exactTime, now);
+                // For re-notifications, we need to remove from processed set if enough time has passed
+                if (shouldNotify && wasProcessedThisSession && reminder.notifiedAt) {
+                    // This is a re-notification - remove from processed set to allow re-processing
+                    this.processedReminders.delete(reminder.id);
+                }
 
-                    // Only trigger if the reminder is actually due (not early)
-                    if (exactDiff <= 0) {
+                // Only process reminders that should be notified and haven't been processed this session
+                if (shouldNotify && !this.processedReminders.has(reminder.id)) {
+                    // For re-notifications, the reminder is already overdue, so we should trigger it
+                    // For first-time notifications, we need to check if it's actually due
+                    const isFirstTimeNotification = !reminder.notifiedAt;
+                    let shouldTrigger = true;
+
+                    if (isFirstTimeNotification) {
+                        // Double-check timing before triggering (final validation for first notification)
+                        const exactTime = new Date(reminder.datetime);
+                        const exactDiff = differenceInSeconds(exactTime, now);
+                        // Only trigger if the reminder is actually due (not early)
+                        shouldTrigger = exactDiff <= 0;
+                    }
+                    // For re-notifications, shouldTrigger remains true since the reminder is already overdue
+
+                    if (shouldTrigger) {
                         // Show the notification
                         await this.notificationService.showReminder(reminder);
 

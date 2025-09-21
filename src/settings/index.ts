@@ -153,8 +153,18 @@ export class RemindersSettingTab extends PluginSettingTab {
             .addDropdown((dropdown) =>
                 dropdown
                     .addOption("never", "Never (notify once)")
+                    .addOption("30seconds", "Every 30 seconds")
+                    .addOption("1minute", "Every minute")
+                    .addOption("2minutes", "Every 2 minutes")
+                    .addOption("5minutes", "Every 5 minutes")
+                    .addOption("10minutes", "Every 10 minutes")
+                    .addOption("15minutes", "Every 15 minutes")
+                    .addOption("30minutes", "Every 30 minutes")
                     .addOption("1hour", "Every hour")
+                    .addOption("2hours", "Every 2 hours")
                     .addOption("4hours", "Every 4 hours")
+                    .addOption("8hours", "Every 8 hours")
+                    .addOption("12hours", "Every 12 hours")
                     .addOption("24hours", "Once daily")
                     .setValue(this.plugin.settings.renotificationInterval)
                     .onChange(async (value) => {
