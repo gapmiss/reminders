@@ -691,8 +691,17 @@ export class ReminderSidebarView extends ItemView {
                 });
         });
 
-        // Show the menu at the click position
-        menu.showAtMouseEvent(event as MouseEvent);
+        // Show the menu at the button position (works for both mouse and keyboard)
+        const mouseEvent = event as MouseEvent;
+        if (event.type === 'click' && mouseEvent.detail === 0) {
+            // Keyboard activation (Enter/Space) - position menu at button
+            const target = event.target as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+        } else {
+            // Mouse click - use mouse position
+            menu.showAtMouseEvent(mouseEvent);
+        }
     }
 
     /**
