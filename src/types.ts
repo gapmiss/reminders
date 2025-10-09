@@ -24,7 +24,7 @@ export interface Reminder {
     message: string;               // The reminder text shown to the user
     datetime: string;              // When to trigger (ISO string format)
     priority: ReminderPriority;    // Importance level
-    category: string;              // Optional organization category
+    tags: string[];                // Optional organization tags
     sourceNote?: string;           // Optional link to source note file path
     sourceLine?: number;           // Optional link to specific line in note
     completed: boolean;            // Whether the reminder has been finished
@@ -146,7 +146,8 @@ export function isValidReminder(obj: any): obj is Reminder {
         typeof obj.datetime === 'string' &&
         isValidISODate(obj.datetime) &&
         isValidPriority(obj.priority) &&
-        typeof obj.category === 'string' &&
+        Array.isArray(obj.tags) &&
+        obj.tags.every((tag: any) => typeof tag === 'string') &&
         typeof obj.completed === 'boolean' &&
         typeof obj.snoozeCount === 'number' &&
         typeof obj.created === 'string' &&

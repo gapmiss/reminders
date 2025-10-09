@@ -45,6 +45,7 @@ This is a comprehensive reminder system for Obsidian that allows users to create
 - **Purpose**: Main interface for viewing and managing reminders
 - **Features**:
   - Filterable reminder list (pending, upcoming, snoozed, completed, all)
+  - **Advanced filtering**: Tag and priority filtering on "All" tab with OR logic
   - Real-time statistics display
   - Interactive reminder items with completion toggles
   - Edit, delete, and snooze actions
@@ -56,7 +57,7 @@ This is a comprehensive reminder system for Obsidian that allows users to create
   - Message input with context auto-population
   - DateTime picker with quick-time buttons
   - Priority selection (low, normal, high, urgent)
-  - Category organization
+  - **Tags organization**: Comma-separated tags (case-insensitive, stored lowercase)
   - Note linking with file picker
   - Form validation
   - **Non-destructive editing**: Changes only applied on form submission, not during editing
@@ -91,7 +92,7 @@ interface Reminder {
     message: string;               // Reminder text
     datetime: string;              // Due time (ISO string)
     priority: 'low' | 'normal' | 'high' | 'urgent';
-    category: string;              // Organization category
+    tags: string[];                // Organization tags (lowercase)
     sourceNote?: string;           // Linked note path
     sourceLine?: number;           // Linked line number
     completed: boolean;            // Completion status
@@ -129,6 +130,12 @@ interface Reminder {
 - **Sidebar**: Open via ribbon icon or "Show reminder sidebar" command
 - **Filter Tabs**: Switch between pending, upcoming, snoozed, completed, all
 - **Statistics**: Real-time counts for different reminder states
+- **Advanced Filtering** (on "All" tab):
+  - Click the "All" tab when already active to open filter menu
+  - Filter by tags and/or priority with OR logic
+  - Visual indicator: chevron icon shows menu available
+  - Active filters shown in tab label (e.g., "All • work • urgent")
+  - Filter icon changes to filter-x when filters active
 
 #### Editing Reminders
 1. Click edit (pencil) icon on any reminder
@@ -225,7 +232,7 @@ app.plugins.plugins.reminders.dataManager.createReminder({
     message: "Test reminder",
     datetime: addMinutes(new Date(), 1).toISOString(),
     priority: "high",
-    category: "testing"
+    tags: ["testing", "work"]
 });
 ```
 
@@ -326,6 +333,25 @@ src/
 - **Improved scheduler logic**: Re-notifications now properly clear processed state when interval time elapses
 - **Precise time calculations**: Uses date-fns functions for accurate seconds, minutes, and hours differences
 
+### Tags and Advanced Filtering System (2025)
+- **Multi-tag support**: Replaced single `category` string with `tags` array for flexible organization
+  - **Comma-separated input**: Users enter tags as "work, urgent, personal" in modal
+  - **Case-insensitive**: All tags normalized to lowercase for consistent matching
+  - **Badge display**: Tags shown as visual chips/badges in reminder list
+- **Advanced filtering on "All" tab**:
+  - **OR logic**: Filter by tag and/or priority - shows reminders matching either condition
+  - **Interactive menu**: Click active "All" tab to open filter dropdown
+  - **Visual indicators**: Chevron shows menu available, filter-x icon when filters active
+  - **Dynamic label**: Tab shows active filters (e.g., "All • work • urgent")
+- **Data methods**:
+  - `getAllTags()`: Returns unique tags with usage counts
+  - `getFilteredByTag()`: Filter reminders by tag (case-insensitive)
+- **UI/UX improvements**:
+  - Checkmark indicators for selected filters
+  - Priority icons (🔴 🟡 ⚪ 🔵) with counts in menu
+  - Persistent filter state when navigating tabs
+  - Auto-clear filters when switching away from "All" tab
+
 ## Security Considerations
 
 ### Data Storage
@@ -337,8 +363,9 @@ src/
 - Message length and content validation
 - DateTime format validation with proper date-fns error handling
 - File path validation for note linking
-- Priority and category value validation
+- Priority and tags value validation
 - **Robust date validation**: All date operations include checks for invalid Date objects to prevent runtime errors
+- **Tags validation**: All tags normalized to lowercase for case-insensitive matching
 
 ## Future Enhancement Ideas
 

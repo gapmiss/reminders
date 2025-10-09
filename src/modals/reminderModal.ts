@@ -23,6 +23,7 @@ export class ReminderModal extends Modal {
     private formData: Partial<Reminder>;                              // Form data being edited (temporary until submission)
     private onSubmit: (reminder: Reminder, isEdit: boolean) => void;  // Callback when user submits the form
     private isEdit: boolean;                                          // Whether we're editing existing reminder or creating new one
+    private tagsInput: string = '';                                   // Temporary storage for comma-separated tags input
     plugin: ReminderPlugin;                                           // Plugin instance for accessing settings and methods
 
     /**
@@ -53,12 +54,17 @@ export class ReminderModal extends Modal {
             message: '',                                                                    // Empty message for user to fill
             datetime: formatForInput(createDateHoursFromNow(UI_CONFIG.DEFAULT_HOURS_AHEAD)),         // Default to 1 hour from now
             priority: this.plugin.settings.defaultPriority,                               // Use user's default priority setting
-            category: ''                                                                   // Empty category
+            tags: []                                                                       // Empty tags array
         };
 
         // For existing reminders, convert ISO datetime to format compatible with datetime-local input
         if (existingReminder?.datetime) {
             this.formData.datetime = formatForInput(existingReminder.datetime);
+        }
+
+        // For existing reminders with tags, convert array to comma-separated string for input field
+        if (existingReminder?.tags && Array.isArray(existingReminder.tags)) {
+            this.tagsInput = existingReminder.tags.join(', ');
         }
 
         // Auto-populate context if creating a new reminder from the active note
@@ -176,16 +182,16 @@ export class ReminderModal extends Modal {
                     });
             });
 
-        // Category input field
+        // Tags input field
         // Optional organizational tool for grouping related reminders
         new Setting(contentEl)
-            .setName('Category')
-            .setDesc('Optional: organize your reminders')
+            .setName('Tags')
+            .setDesc('Comma-separated tags (e.g., work, urgent, meeting)')
             .addText(text => {
-                text.setPlaceholder('work, personal, health...')  // Give examples of common categories
-                    .setValue(this.formData.category || '')       // Pre-fill with existing value
+                text.setPlaceholder('work, urgent, personal...')  // Give examples of common tags
+                    .setValue(this.tagsInput)                      // Pre-fill with existing tags as comma-separated string
                     .onChange(value => {
-                        this.formData.category = value;           // Update form data
+                        this.tagsInput = value;                    // Update temporary tags input string
                     });
             });
 
@@ -406,8 +412,14 @@ export class ReminderModal extends Modal {
             return;
         }
 
+        // Parse tags from comma-separated input string to array
+        const tags = this.tagsInput
+            .split(',')                          // Split by comma
+            .map(tag => tag.trim().toLowerCase()) // Trim whitespace and convert to lowercase
+            .filter(tag => tag.length > 0);     // Remove empty tags
+
         // Create the final reminder by merging original data with form data
-        const finalReminder = { ...this.reminder, ...this.formData };
+        const finalReminder = { ...this.reminder, ...this.formData, tags };
 
         // Generate ID for new reminders (existing reminders already have one)
         if (!finalReminder.id) {

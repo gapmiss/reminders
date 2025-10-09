@@ -9,7 +9,8 @@ A comprehensive reminder management system for [Obsidian.md](https://obsidian.md
 - **📝 Multiple Creation Methods**: Create reminders from ribbon icons, command palette, context menus, text selections, or files
 - **🔔 Dual Notification System**: Receive both OS-level system notifications and Obsidian in-app notices
 - **⚡ Priority Levels**: Organize reminders by urgency (Low, Normal, High, Urgent)
-- **📁 Category Organization**: Group related reminders with custom categories
+- **🏷️ Multi-Tag Support**: Organize reminders with multiple tags (comma-separated, case-insensitive)
+- **🔍 Advanced Filtering**: Filter by tags and/or priority with OR logic on the "All" tab
 - **🔗 Note Linking**: Connect reminders to specific notes and line numbers
 - **⏰ Smart Snoozing**: Postpone reminders with preset durations or custom intervals
 - **🔄 Re-notifications**: Get reminded again for overdue items at configurable intervals
@@ -74,7 +75,7 @@ npm run dev
    - **Message**: What you want to be reminded about
    - **Date & Time**: When you want to be notified
    - **Priority**: How urgent this reminder is
-   - **Category**: Optional organizational grouping
+   - **Tags**: Optional comma-separated tags (e.g., "work, urgent, meeting")
 4. Click **Create Reminder**
 
 ### Creating from Text Selection
@@ -105,7 +106,20 @@ The sidebar displays:
   - **Upcoming**: All future reminders
   - **Snoozed**: Currently snoozed reminders
   - **Done**: Completed reminders
-  - **All**: Complete reminder list
+  - **All**: Complete reminder list with advanced filtering
+
+#### Advanced Filtering (All Tab)
+
+Click the active "All" tab to access the filter menu:
+
+- **Tag Filtering**: Select one or more tags to show only tagged reminders
+- **Priority Filtering**: Filter by priority level (Urgent, High, Normal, Low)
+- **OR Logic**: Combines filters with OR - shows reminders matching tag OR priority
+- **Visual Indicators**:
+  - Chevron icon shows filter menu is available
+  - Filter-x icon when filters are active
+  - Active filters shown in tab label (e.g., "All • work • urgent")
+- **Checkmarks**: Selected filters show checkmarks for clarity
 
 ### Managing Reminders
 
@@ -211,7 +225,7 @@ interface Reminder {
     message: string;               // Reminder text
     datetime: string;              // Due time (ISO string)
     priority: 'low' | 'normal' | 'high' | 'urgent';
-    category: string;              // Organization category
+    tags: string[];                // Organization tags (lowercase)
     sourceNote?: string;           // Linked note path
     sourceLine?: number;           // Linked line number
     completed: boolean;            // Completion status
@@ -345,12 +359,18 @@ While automated tests are a future enhancement, manual testing checklist include
 ### Version 1.0.0
 
 **New Features:**
+- **Multi-tag support**: Replaced single category with multiple tags (comma-separated input)
+- **Advanced filtering**: Filter by tags and/or priority with OR logic on "All" tab
+- **Interactive filter menu**: Click active "All" tab to open tag/priority filter dropdown
 - Re-notification system for overdue reminders with configurable intervals
 - Bulk delete functionality for managing multiple reminders
 - Expanded snooze interval options (30s to 24h)
 - Header button improvements for better UX
 
 **Improvements:**
+- **Case-insensitive tags**: All tags normalized to lowercase for consistency
+- **Visual filter indicators**: Chevron and filter-x icons show filter state
+- **Checkmark UI**: Selected filters show checkmarks for clarity
 - Migrated from moment.js to date-fns for better performance
 - Enhanced date validation with graceful error handling
 - Non-destructive editing in reminder modal
@@ -399,7 +419,7 @@ Future enhancements under consideration:
 
 - Recurring reminders (daily, weekly, monthly patterns)
 - Reminder templates for common use cases
-- Advanced filtering and search capabilities
+- Full-text search capabilities
 - Export/import functionality
 - Integration with calendar plugins
 - Reminder dependencies and chains

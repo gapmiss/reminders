@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, Menu, debounce } from "obsidian";
 import ReminderPlugin from "./main";
-import type { Reminder, FilterType } from './types';
-import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS } from './constants';
+import type { Reminder, FilterType, ReminderPriority } from './types';
+import { ICONS, CSS_CLASSES, FILTER_CONFIG, UI_CONFIG, SVG_CONFIG, DATE_FORMATS, PRIORITY_CONFIG } from './constants';
 import { SnoozeSuggestModal } from "./modals/snoozeSuggestModal";
 import { ConfirmDeleteModal } from "./modals/confirmDeleteModal";
 import { ReminderTimeUpdater } from "./managers/reminderDataManager";
@@ -20,6 +20,8 @@ import { formatTimeWithRelative, formatSnoozeTime, isInPast, createSnoozeTime, s
 export class ReminderSidebarView extends ItemView {
     private plugin: ReminderPlugin;                    // Reference to main plugin for accessing data and methods
     private currentFilter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed' = 'pending';  // Currently selected filter tab
+    private selectedTag: string | null = null;         // Currently selected tag filter (only active on 'all' tab)
+    private selectedPriority: ReminderPriority | null = null;  // Currently selected priority filter (only active on 'all' tab)
     private reminderUpdater: ReminderTimeUpdater;     // Service that updates relative time displays ("5 minutes ago")
     private debouncedRender: () => void;              // Debounced version of render method to prevent excessive re-renders
 
@@ -206,23 +208,56 @@ export class ReminderSidebarView extends ItemView {
 
         // Create a button for each filter option
         filters.forEach(filter => {
+            // Check if this "All" tab has active filters
+            const hasActiveFilters = filter.key === 'all' && (this.selectedTag || this.selectedPriority);
+
+            // Build display label
+            let displayLabel: string = filter.label;
+            if (filter.key === 'all') {
+                const activeFilters: string[] = [];
+                if (this.selectedTag) activeFilters.push(this.selectedTag);
+                if (this.selectedPriority) activeFilters.push(this.selectedPriority);
+                if (activeFilters.length > 0) {
+                    displayLabel = `${filter.label} • ${activeFilters.join(' • ')}`;
+                }
+            }
+
             const tab = tabsEl.createEl('button', {
                 // Apply 'active' class to currently selected filter
-                cls: `filter-tab ${this.currentFilter === filter.key ? 'active' : ''}`,
-                attr: { 'data-tooltip-position': 'top', 'aria-label': filter.label }
+                cls: `filter-tab ${this.currentFilter === filter.key ? 'active' : ''}${this.currentFilter === filter.key && hasActiveFilters ? ' tag-filtered' : ''}`,
+                attr: { 'data-tooltip-position': 'top', 'aria-label': displayLabel }
             });
 
             // Add icon to the tab
             let iconSpan = tab.createSpan('filter-icon');
-            setIcon(iconSpan, filter.icon);
+            // Change filter icon to filter-x when any filter is selected for "All" tab
+            const iconToUse = filter.key === 'all' && (this.selectedTag || this.selectedPriority) ? 'filter-x' : filter.icon;
+            setIcon(iconSpan, iconToUse);
+
+            // Add chevron indicator for "All" tab when active (shows it's clickable for menu)
+            if (filter.key === 'all' && this.currentFilter === 'all') {
+                const chevronSpan = tab.createSpan('tag-menu-indicator');
+                setIcon(chevronSpan, 'chevron-down');
+            }
 
             // Add text label to the tab
-            tab.createSpan({ text: filter.label, cls: 'filter-label' });
+            tab.createSpan({ text: displayLabel, cls: 'filter-label' });
 
             // Handle tab clicks
-            tab.addEventListener('click', () => {
+            tab.addEventListener('click', (e) => {
+                // If clicking on "All" tab and it's already active, show filter menu
+                if (filter.key === 'all' && this.currentFilter === 'all') {
+                    this.showFilterMenu(e);
+                    return;
+                }
+
                 // Update the current filter
                 this.currentFilter = filter.key as FilterType;
+                // Clear all filters when switching away from "all" tab
+                if (filter.key !== 'all') {
+                    this.selectedTag = null;
+                    this.selectedPriority = null;
+                }
                 // Re-render to show the new filtered view
                 this.debouncedRender();
             });
@@ -411,17 +446,19 @@ export class ReminderSidebarView extends ItemView {
     }
 
     /**
-     * Adds category display to the metadata section if the reminder has a category.
+     * Adds tags display to the metadata section if the reminder has tags.
      *
      * @param metaEl - The metadata container element
      * @param reminder - The reminder data
      */
     private addCategoryDisplay(metaEl: HTMLElement, reminder: Reminder) {
-        // Show category if one is assigned
-        if (reminder.category) {
-            metaEl.createSpan({
-                text: reminder.category,
-                cls: 'reminder-category'
+        // Show tags if any are assigned
+        if (reminder.tags && reminder.tags.length > 0) {
+            reminder.tags.forEach(tag => {
+                metaEl.createSpan({
+                    text: tag,
+                    cls: 'reminder-tag'
+                });
             });
         }
     }
@@ -646,6 +683,29 @@ export class ReminderSidebarView extends ItemView {
                 });
                 break;
         }
+
+        // Apply tag/priority filters if active and on "all" tab (OR logic)
+        if (this.currentFilter === 'all' && (this.selectedTag || this.selectedPriority)) {
+            reminders = reminders.filter(r => {
+                // OR logic: match if either tag OR priority matches (or both)
+                const tagMatch = this.selectedTag
+                    ? r.tags && r.tags.some(t => t.toLowerCase() === this.selectedTag!.toLowerCase())
+                    : false;
+
+                const priorityMatch = this.selectedPriority
+                    ? r.priority === this.selectedPriority
+                    : false;
+
+                // If both filters are set, match either one (OR)
+                if (this.selectedTag && this.selectedPriority) {
+                    return tagMatch || priorityMatch;
+                }
+
+                // If only one filter is set, must match that one
+                return tagMatch || priorityMatch;
+            });
+        }
+
         return reminders;
     }
 
@@ -658,6 +718,89 @@ export class ReminderSidebarView extends ItemView {
     setFilter(filter: 'pending' | 'snoozed' | 'upcoming' | 'all' | 'completed') {
         this.currentFilter = filter;
         this.render();
+    }
+
+    /**
+     * Shows the tag and priority filter menu for the "All" tab.
+     *
+     * @param event - Click event to position the menu
+     */
+    private showFilterMenu(event: Event) {
+        const menu = new Menu();
+
+        // Get all unique tags with counts
+        const allTags = this.plugin.dataManager.getAllTags();
+
+        // TAG SECTION
+        // Add "All tags" option to clear tag filter
+        menu.addItem((item) => {
+            item.setTitle('All tags')
+                .setChecked(this.selectedTag === null)
+                .onClick(() => {
+                    this.selectedTag = null;
+                    this.debouncedRender();
+                });
+        });
+
+        // Add separator if there are tags
+        if (allTags.length > 0) {
+            menu.addSeparator();
+        }
+
+        // Add each tag as a menu item with checkmarks
+        allTags.forEach(({ tag, count }) => {
+            menu.addItem((item) => {
+                item.setTitle(`${tag} (${count})`)
+                    .setChecked(this.selectedTag === tag)
+                    .onClick(() => {
+                        this.selectedTag = this.selectedTag === tag ? null : tag;
+                        this.debouncedRender();
+                    });
+            });
+        });
+
+        // PRIORITY SECTION
+        menu.addSeparator();
+
+        // Add "All priorities" option to clear priority filter
+        menu.addItem((item) => {
+            item.setTitle('All priorities')
+                .setChecked(this.selectedPriority === null)
+                .onClick(() => {
+                    this.selectedPriority = null;
+                    this.debouncedRender();
+                });
+        });
+
+        menu.addSeparator();
+
+        // Add each priority level with icons and counts
+        const priorities: ReminderPriority[] = ['urgent', 'high', 'normal', 'low'];
+        priorities.forEach(priority => {
+            const count = this.plugin.dataManager.reminders.filter(r => r.priority === priority).length;
+            const config = PRIORITY_CONFIG[priority];
+
+            menu.addItem((item) => {
+                item.setTitle(`${config.icon} ${config.label} (${count})`)
+                    .setChecked(this.selectedPriority === priority)
+                    .onClick(() => {
+                        this.selectedPriority = this.selectedPriority === priority ? null : priority;
+                        this.debouncedRender();
+                    });
+            });
+        });
+
+        // Show the menu at the button position (works for both mouse and keyboard)
+        const mouseEvent = event as MouseEvent;
+        if (event.type === 'click' && mouseEvent.detail === 0) {
+            // Keyboard activation (Enter/Space) - position menu at button
+            const target = event.target as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+        } else {
+            // Mouse click - use mouse position
+            menu.showAtMouseEvent(mouseEvent);
+        }
     }
 
     /**

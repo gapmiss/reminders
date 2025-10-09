@@ -136,6 +136,23 @@
     height: 13px;
 }
 
+/* Chevron indicator for tag menu in All tab */
+.reminder-sidebar .tag-menu-indicator {
+    margin-left: var(--size-2-1);
+    display: inline-flex;
+    align-items: center;
+}
+
+.reminder-sidebar .tag-menu-indicator svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Highlight All tab when tag filter is active */
+.reminder-sidebar .filter-tab.tag-filtered {
+    background: var(--background-modifier-hover);
+}
+
 /* ===================================================================
    STATISTICS SECTION
    =================================================================== */
@@ -220,11 +237,14 @@
     flex-wrap: wrap;
 }
 
-.reminder-sidebar .reminder-category {
+.reminder-sidebar .reminder-tag {
+    display: inline-block;
     background: var(--background-modifier-border);
-    padding: 0 var(--size-4-1) var(--size-2-1) var(--size-4-1);
-    border-radius: var(--size-4-1);
-    font-size: var(--font-smaller);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: 10px;
+    font-size: var(--font-smallest);
+    margin-right: var(--size-2-1);
+    color: var(--text-muted);
 }
 
 .reminder-sidebar .reminder-note-link {

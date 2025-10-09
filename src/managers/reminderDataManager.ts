@@ -42,7 +42,7 @@ export class ReminderDataManager {
             message: reminderData.message || '',                                     // Reminder text (required)
             datetime: reminderData.datetime || createDateHoursFromNow(1).toISOString(), // Default to 1 hour from now
             priority: reminderData.priority || this.plugin.settings.defaultPriority, // Use user's default priority setting
-            category: reminderData.category || '',                                   // Optional category for organization
+            tags: reminderData.tags || [],                                           // Optional organization tags
             sourceNote: reminderData.sourceNote,                                    // Optional link to source note
             sourceLine: reminderData.sourceLine,                                    // Optional link to specific line
             completed: false,                                                        // New reminders start incomplete
@@ -344,6 +344,46 @@ export class ReminderDataManager {
                 new Date(r.datetime) < next24Hours
             ).length
         };
+    }
+
+    /**
+     * Gets all unique tags from all reminders, sorted alphabetically.
+     * Returns tags with their usage count for UI display.
+     *
+     * @returns Array of objects with tag name and count
+     */
+    getAllTags(): Array<{ tag: string; count: number }> {
+        const tagCounts = new Map<string, number>();
+
+        // Count occurrences of each tag (case-insensitive)
+        for (const reminder of this.plugin.settings.reminders) {
+            if (reminder.tags && Array.isArray(reminder.tags)) {
+                for (const tag of reminder.tags) {
+                    const normalizedTag = tag.trim().toLowerCase();
+                    if (normalizedTag) { // Ignore empty tags
+                        tagCounts.set(normalizedTag, (tagCounts.get(normalizedTag) || 0) + 1);
+                    }
+                }
+            }
+        }
+
+        // Convert to array and sort alphabetically
+        return Array.from(tagCounts.entries())
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => a.tag.localeCompare(b.tag));
+    }
+
+    /**
+     * Gets all reminders that contain a specific tag (case-insensitive).
+     *
+     * @param tag - Tag to filter by
+     * @returns Array of reminders containing the tag, sorted by due time
+     */
+    getFilteredByTag(tag: string): Reminder[] {
+        const normalizedTag = tag.toLowerCase();
+        return this.plugin.settings.reminders
+            .filter(r => r.tags && r.tags.some(t => t.toLowerCase() === normalizedTag))
+            .sort(sortByDatetimeAsc);
     }
 }
 
