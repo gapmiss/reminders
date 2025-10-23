@@ -138,7 +138,10 @@ export class ReminderSidebarView extends ItemView {
         // "+" button with concierge-bell icon for creating reminders
         const newBtn = actionsEl.createEl('button', {
             text: '+',
-            cls: 'mod-cta new-reminder-btn'  // Obsidian's call-to-action button style + custom class
+            cls: 'mod-cta new-reminder-btn',  // Obsidian's call-to-action button style + custom class
+            attr: {
+                'aria-label': 'New reminder'
+            }
         });
         setIcon(newBtn, ICONS.BELL);  // Add concierge-bell icon
         newBtn.addEventListener('click', () => {
@@ -148,7 +151,10 @@ export class ReminderSidebarView extends ItemView {
 
         // Refresh button to manually reload the view
         const refreshBtn = actionsEl.createEl('button', {
-            cls: 'refresh-button'
+            cls: 'refresh-button',
+            attr: {
+                'aria-label': 'Refresh view'
+            }    
         });
         setIcon(refreshBtn, 'rotate-ccw');  // Use Obsidian's refresh icon
         refreshBtn.addEventListener('click', () => {
@@ -187,7 +193,10 @@ export class ReminderSidebarView extends ItemView {
 
         // Ellipse menu button for bulk actions
         const ellipseBtn = actionsEl.createEl('button', {
-            cls: 'ellipse-menu-btn'
+            cls: 'ellipse-menu-btn',
+            attr: {
+                'aria-label': 'More …'
+            }
         });
         setIcon(ellipseBtn, 'more-horizontal');  // Use Obsidian's ellipse icon
         ellipseBtn.addEventListener('click', (e) => {
@@ -201,7 +210,10 @@ export class ReminderSidebarView extends ItemView {
      */
     private createFilterTabs() {
         // Create container for the tab buttons
-        const tabsEl = this.contentEl.createDiv({ cls: 'reminder-filter-tabs' });
+        const tabsEl = this.contentEl.createDiv({
+            cls: 'reminder-filter-tabs',
+            attr: { 'role': 'tablist', 'aria-label': 'Reminder filters' }
+        });
 
         // Define all available filter options with their display properties
         const filters = FILTER_CONFIG;
@@ -225,7 +237,13 @@ export class ReminderSidebarView extends ItemView {
             const tab = tabsEl.createEl('button', {
                 // Apply 'active' class to currently selected filter
                 cls: `filter-tab ${this.currentFilter === filter.key ? 'active' : ''}${this.currentFilter === filter.key && hasActiveFilters ? ' tag-filtered' : ''}`,
-                attr: { 'data-tooltip-position': 'top', 'aria-label': displayLabel }
+                attr: {
+                    'role': 'tab',
+                    'aria-selected': this.currentFilter === filter.key ? 'true' : 'false',
+                    'aria-controls': 'reminder-list',
+                    'data-tooltip-position': 'top',
+                    'aria-label': displayLabel
+                }
             });
 
             // Add icon to the tab
@@ -272,7 +290,10 @@ export class ReminderSidebarView extends ItemView {
         // Get current statistics from the data manager
         const stats = this.plugin.dataManager.getStatistics();
         // Create container for statistics display
-        const statsEl = this.contentEl.createDiv({ cls: 'reminder-stats' });
+        const statsEl = this.contentEl.createDiv({
+            cls: 'reminder-stats',
+            attr: { 'role': 'status', 'aria-live': 'polite' }
+        });
 
         // Define which statistics to show and their styling
         const statItems = [
@@ -298,7 +319,10 @@ export class ReminderSidebarView extends ItemView {
      */
     private createReminderList() {
         // Create container for the reminder list
-        const listEl = this.contentEl.createDiv({ cls: 'reminder-list' });
+        const listEl = this.contentEl.createDiv({
+            cls: 'reminder-list',
+            attr: { 'role': 'list', 'aria-label': 'Reminders' }
+        });
 
         // Get reminders that match the current filter
         let reminders = this.getFilteredReminders();
@@ -344,7 +368,8 @@ export class ReminderSidebarView extends ItemView {
         // Create the main container for this reminder item
         // CSS classes help with styling and indicate the reminder's state
         return container.createDiv({
-            cls: `reminder-item priority-${reminder.priority} ${reminder.completed ? 'completed' : ''} ${reminder.snoozedUntil ? 'snoozed' : ''}`
+            cls: `reminder-item priority-${reminder.priority} ${reminder.completed ? 'completed' : ''} ${reminder.snoozedUntil ? 'snoozed' : ''}`,
+            attr: { 'role': 'listitem' }
         });
     }
 
@@ -862,10 +887,10 @@ export class ReminderSidebarView extends ItemView {
         const message = `Are you sure you want to delete ${count} completed reminder${count > 1 ? 's' : ''}?`;
 
         const confirmed = await this.showConfirmDialog(
-            'Delete Completed Reminders',
+            'Delete completed reminders',
             message,
             'This action cannot be undone.',
-            'Delete Completed'
+            'Delete completed'
         );
 
         if (confirmed) {

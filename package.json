@@ -1,7 +1,7 @@
 {
 	"name": "reminders",
 	"version": "1.0.0",
-	"description": "An Obsidian.md plugin to…",
+	"description": "A comprehensive reminder management system for Obsidian.md with multi-tag support, advanced filtering, snoozing, and smart notifications",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -11,8 +11,17 @@
 		"release:minor": "node release.mjs minor",
 		"release:major": "node release.mjs major"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"reminders",
+		"notifications",
+		"productivity",
+		"task-management",
+		"time-management",
+		"scheduling"
+	],
+	"author": "@gapmiss",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",

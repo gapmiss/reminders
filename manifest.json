@@ -3,7 +3,7 @@
 	"name": "Reminders",
 	"version": "1.0.0",
 	"minAppVersion": "1.1.0",
-	"description": "",
+	"description": "A comprehensive reminder management system that seamlessly integrates time-based notifications into your note-taking workflow with tags, priorities, snoozing, and note linking.",
 	"author": "@gapmiss",
 	"authorUrl": "https://github.com/gapmiss",
 	"isDesktopOnly": false

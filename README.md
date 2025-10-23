@@ -23,7 +23,7 @@ A comprehensive reminder management system for [Obsidian.md](https://obsidian.md
 - **Adaptive Scheduler**: Optimized checking intervals that adapt based on upcoming reminder times
 - **Duplicate Prevention**: Intelligent tracking prevents redundant notifications
 - **Interactive Notifications**: Complete, snooze, or dismiss directly from notifications
-- **Bulk Operations**: Select and delete multiple reminders at once
+- **Bulk Operations**: Delete all completed or all reminders at once
 - **Safe Deletion**: Confirmation modals prevent accidental data loss
 - **Form Validation**: Comprehensive input validation with helpful error messages
 - **Date Validation**: Robust date handling with graceful fallbacks for edge cases
@@ -102,8 +102,8 @@ Access the reminder sidebar by:
 The sidebar displays:
 - **Real-time statistics** at the top
 - **Filter tabs** for different reminder views:
-  - **Pending**: Incomplete reminders due within 24 hours
-  - **Upcoming**: All future reminders
+  - **Pending**: Overdue reminders that need attention (past due time)
+  - **Upcoming**: Future reminders that haven't triggered yet
   - **Snoozed**: Currently snoozed reminders
   - **Done**: Completed reminders
   - **All**: Complete reminder list with advanced filtering
@@ -131,30 +131,33 @@ Click the active "All" tab to access the filter menu:
 
 #### Editing Reminders
 
-1. Click the pencil icon next to any reminder
-2. Modify the fields as needed
-3. Click **Update** to save or **Cancel** to discard changes
-4. **Note**: Changes are only applied when you save, not during editing
+1. Click the three-dot menu (⋯) on any reminder
+2. Select **Edit** from the menu
+3. Modify the fields as needed in the modal
+4. Click **Update** to save or **Cancel** to discard changes
+5. **Note**: Changes are only applied when you save, not during editing
 
 #### Snoozing Reminders
 
-1. Click the clock icon on overdue reminders, or
-2. Click **Snooze** in the notification
-3. Choose from preset durations or enter custom minutes
-4. Reminder will reappear after the snooze period
+1. Click the three-dot menu (⋯) on an overdue reminder
+2. Select **Snooze** from the menu, or
+3. Click **Snooze** in the notification popup
+4. Choose from preset durations or enter custom minutes
+5. Reminder will reappear after the snooze period
 
 #### Deleting Reminders
 
-1. Click the trash icon
-2. Review the reminder details in the confirmation modal
-3. Confirm deletion (this action is permanent)
+1. Click the three-dot menu (⋯) on any reminder
+2. Select **Delete** from the menu
+3. Review the reminder details in the confirmation modal
+4. Confirm deletion (this action is permanent)
 
 #### Bulk Operations
 
-1. Click **Select** in the sidebar header
-2. Check the reminders you want to delete
-3. Click **Delete Selected**
-4. Confirm the deletion
+Access bulk operations via the three-dot menu (⋯) in the sidebar header:
+
+- **Delete Completed**: Remove all completed reminders at once
+- **Delete All**: Remove all reminders (requires confirmation)
 
 ### Notification Handling
 
@@ -194,12 +197,7 @@ Access plugin settings via **Settings → Community Plugins → Reminders**:
 
 ### Debugging
 
-- **Show Debug Logs**: Enable console logging for troubleshooting
-
-### Performance Tuning
-
-- **Fast Check Interval**: How often to check when reminders are due soon (default: 5s)
-- **Slow Check Interval**: How often to check when no reminders are imminent (default: 30s)
+- **Debug**: Enable console logging for troubleshooting
 
 ## Keyboard Shortcuts
 

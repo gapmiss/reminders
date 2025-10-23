@@ -102,7 +102,7 @@ export class ReminderModal extends Modal {
 
         // Main title - changes based on edit vs create mode
         contentEl.createEl('h2', {
-            text: this.isEdit ? 'Edit Reminder' : 'Create Reminder'
+            text: this.isEdit ? 'Edit reminder' : 'Create reminder'
         });
 
         // Message input field
@@ -125,7 +125,7 @@ export class ReminderModal extends Modal {
         // Date and time picker
         // Uses HTML5 datetime-local input for native date/time selection
         new Setting(contentEl)
-            .setName('Date & Time')
+            .setName('Date & time')
             .setDesc('When should I remind you?')
             .addText(text => {
                 // Set input type to datetime-local for native picker
@@ -265,7 +265,7 @@ export class ReminderModal extends Modal {
                                     new FileSuggestModal(this.app, (selectedFile) => {
                                         if (selectedFile) {
                                             // User selected a file
-                                            this.reminder.sourceNote = selectedFile.path;
+                                            this.formData.sourceNote = selectedFile.path;
                                             // Update toggle state to reflect the link
                                             isUpdatingToggle = true;
                                             toggleComponent.setValue(true);
@@ -282,7 +282,7 @@ export class ReminderModal extends Modal {
                                                 .setClass('mod-cta');
                                             // Update click handler back to open file
                                             buttonComponent.onClick(() => {
-                                                const file = this.app.vault.getAbstractFileByPath(this.reminder.sourceNote!);
+                                                const file = this.app.vault.getAbstractFileByPath(this.formData.sourceNote!);
                                                 if (file instanceof TFile) {
                                                     this.app.workspace.openLinkText(file.path, '');
                                                 } else {
