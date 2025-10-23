@@ -25,3 +25,10 @@ IMPROVEMENTS_LOG.md
 .DS_Store
 
 .hotreload
+
+.claude
+*PLAN.md
+*AUDIT.md
+*TESTING.md
+
+coverage

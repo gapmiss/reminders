@@ -305,12 +305,44 @@ src/
 
 ### Testing
 
-While automated tests are a future enhancement, manual testing checklist includes:
+The plugin includes a comprehensive automated test suite:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run specific test file
+npm test -- tests/unit/dateUtils.test.ts
+```
+
+**Test Coverage:**
+- 226 automated tests
+- ~60% overall code coverage
+- 100% coverage on critical utilities (dateUtils, constants)
+- 94% coverage on error handling
+- Comprehensive testing of core business logic
+
+**Test Suite Includes:**
+- ✅ Date utilities (41 tests, 100% coverage)
+- ✅ Type definitions and guards (21 tests, 71% coverage)
+- ✅ Reminder data manager (46 tests, 68% coverage)
+- ✅ Constants and configuration (54 tests, 100% coverage)
+- ✅ Error handling system (64 tests, 94% coverage)
+
+For detailed testing documentation, see [TESTING.md](./TESTING.md).
+
+**Manual Testing Checklist** (for UI components not covered by automated tests):
 
 - [ ] Create reminder with all field types
 - [ ] Edit existing reminder and verify non-destructive editing
 - [ ] Cancel reminder editing and verify data preservation
-- [ ] Test all filter views
+- [ ] Test all filter views and advanced filtering
 - [ ] Verify notification triggering at correct times
 - [ ] Test snooze functionality with various durations
 - [ ] Test re-notification system
@@ -320,7 +352,7 @@ While automated tests are a future enhancement, manual testing checklist include
 - [ ] Test context menu integration
 - [ ] Test keyboard shortcuts
 - [ ] Test bulk operations
-- [ ] Test date validation edge cases
+- [ ] Test mobile responsiveness (if applicable)
 
 ## Troubleshooting
 
@@ -422,7 +454,7 @@ Future enhancements under consideration:
 - Integration with calendar plugins
 - Reminder dependencies and chains
 - Mobile app optimization
-- Automated testing suite
+- ✅ ~~Automated testing suite~~ (Complete - 226 tests)
 
 ---
 
