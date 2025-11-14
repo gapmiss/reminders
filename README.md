@@ -1,465 +1,380 @@
 # Obsidian Reminders
 
-A comprehensive reminder management system for [Obsidian.md](https://obsidian.md) that seamlessly integrates time-based notifications into your note-taking workflow.
-
-## Features
-
-### Core Functionality
-
-- **📝 Multiple Creation Methods**: Create reminders from ribbon icons, command palette, context menus, text selections, or files
-- **🔔 Dual Notification System**: Receive both OS-level system notifications and Obsidian in-app notices
-- **⚡ Priority Levels**: Organize reminders by urgency (Low, Normal, High, Urgent)
-- **🏷️ Multi-Tag Support**: Organize reminders with multiple tags (comma-separated, case-insensitive)
-- **🔍 Advanced Filtering**: Filter by tags and/or priority with OR logic on the "All" tab
-- **🔗 Note Linking**: Connect reminders to specific notes and line numbers
-- **⏰ Smart Snoozing**: Postpone reminders with preset durations or custom intervals
-- **🔄 Re-notifications**: Get reminded again for overdue items at configurable intervals
-- **📊 Real-time Statistics**: Track pending, overdue, snoozed, and completed reminders
-- **🎯 Intuitive Sidebar**: Manage all reminders in a dedicated, filterable view
-- **⌨️ Keyboard Shortcuts**: Quick access to common actions
-
-### Advanced Features
-
-- **Adaptive Scheduler**: Optimized checking intervals that adapt based on upcoming reminder times
-- **Duplicate Prevention**: Intelligent tracking prevents redundant notifications
-- **Interactive Notifications**: Complete, snooze, or dismiss directly from notifications
-- **Bulk Operations**: Delete all completed or all reminders at once
-- **Safe Deletion**: Confirmation modals prevent accidental data loss
-- **Form Validation**: Comprehensive input validation with helpful error messages
-- **Date Validation**: Robust date handling with graceful fallbacks for edge cases
-
-## Installation
-
-### From Obsidian Community Plugins
-
-1. Open Obsidian Settings
-2. Navigate to **Community Plugins**
-3. Disable **Safe Mode** if enabled
-4. Click **Browse** and search for "Reminders"
-5. Click **Install**
-6. Enable the plugin in your Community Plugins list
-
-### Manual Installation
-
-1. Download the latest release from [GitHub Releases](https://github.com/gapmiss/reminders/releases)
-2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/reminders/`
-3. Reload Obsidian
-4. Enable the plugin in Settings → Community Plugins
-
-### Build From Source
-
-```bash
-# Clone the repository
-git clone https://github.com/gapmiss/reminders.git
-
-# Navigate to the plugin directory
-cd reminders
-
-# Install dependencies
-npm install
-
-# Build for production
-npm run build
-
-# Or run in development mode with hot reload
-npm run dev
-```
-
-## Quick Start
-
-### Creating Your First Reminder
-
-1. Click the bell icon in the left ribbon, or
-2. Press `Cmd/Ctrl+Shift+R` to open the reminder creation modal
-3. Fill in your reminder details:
-   - **Message**: What you want to be reminded about
-   - **Date & Time**: When you want to be notified
-   - **Priority**: How urgent this reminder is
-   - **Tags**: Optional comma-separated tags (e.g., "work, urgent, meeting")
-4. Click **Create Reminder**
-
-### Creating from Text Selection
-
-1. Select text in any note
-2. Right-click and choose **"Create reminder from selection"**, or
-3. Press `Cmd/Ctrl+Alt+R`
-4. The selected text becomes your reminder message
-
-### Creating from Files
-
-1. Right-click any file in the file explorer
-2. Select **"Create reminder for this note"**
-3. The reminder automatically links to that file
-
-## Usage Guide
-
-### Viewing Reminders
-
-Access the reminder sidebar by:
-- Clicking the bell icon in the ribbon
-- Using the command palette: **"Show reminder sidebar"**
-
-The sidebar displays:
-- **Real-time statistics** at the top
-- **Filter tabs** for different reminder views:
-  - **Pending**: Overdue reminders that need attention (past due time)
-  - **Upcoming**: Future reminders that haven't triggered yet
-  - **Snoozed**: Currently snoozed reminders
-  - **Done**: Completed reminders
-  - **All**: Complete reminder list with advanced filtering
-
-#### Advanced Filtering (All Tab)
-
-Click the active "All" tab to access the filter menu:
-
-- **Tag Filtering**: Select one or more tags to show only tagged reminders
-- **Priority Filtering**: Filter by priority level (Urgent, High, Normal, Low)
-- **OR Logic**: Combines filters with OR - shows reminders matching tag OR priority
-- **Visual Indicators**:
-  - Chevron icon shows filter menu is available
-  - Filter-x icon when filters are active
-  - Active filters shown in tab label (e.g., "All • work • urgent")
-- **Checkmarks**: Selected filters show checkmarks for clarity
-
-### Managing Reminders
-
-#### Completing Reminders
-
-- Toggle the checkbox in the sidebar, or
-- Click **Complete** in the notification popup
-- Completed reminders move to the "Done" tab
-
-#### Editing Reminders
-
-1. Click the three-dot menu (⋯) on any reminder
-2. Select **Edit** from the menu
-3. Modify the fields as needed in the modal
-4. Click **Update** to save or **Cancel** to discard changes
-5. **Note**: Changes are only applied when you save, not during editing
-
-#### Snoozing Reminders
-
-1. Click the three-dot menu (⋯) on an overdue reminder
-2. Select **Snooze** from the menu, or
-3. Click **Snooze** in the notification popup
-4. Choose from preset durations or enter custom minutes
-5. Reminder will reappear after the snooze period
-
-#### Deleting Reminders
-
-1. Click the three-dot menu (⋯) on any reminder
-2. Select **Delete** from the menu
-3. Review the reminder details in the confirmation modal
-4. Confirm deletion (this action is permanent)
-
-#### Bulk Operations
-
-Access bulk operations via the three-dot menu (⋯) in the sidebar header:
-
-- **Delete Completed**: Remove all completed reminders at once
-- **Delete All**: Remove all reminders (requires confirmation)
-
-### Notification Handling
-
-When a reminder triggers:
-- **System notification** appears (if enabled in settings)
-- **Obsidian notice** appears (if enabled in settings)
-
-Available actions:
-- **Complete**: Mark the reminder as done
-- **Snooze**: Postpone to a later time
-- **Close/Dismiss**: Close without action
-
-### Re-notifications
-
-For overdue reminders that haven't been actioned, the plugin can notify you again at configurable intervals:
-
-- Never (default)
-- 30 seconds, 1 minute, 2 minutes (for testing)
-- 5, 10, 15, 30 minutes
-- 1, 2, 4, 8, 12, 24 hours
-
-Configure this in Settings → Reminders → Re-notification interval.
-
-## Settings
-
-Access plugin settings via **Settings → Community Plugins → Reminders**:
-
-### Notification Options
-
-- **Show System Notifications**: Enable OS-level notifications
-- **Show Obsidian Notices**: Enable in-app popup notices
-- **Re-notification Interval**: How often to remind for overdue items
-
-### Default Values
-
-- **Default Priority**: Priority level for new reminders (Normal, Low, High, Urgent)
-
-### Debugging
-
-- **Debug**: Enable console logging for troubleshooting
-
-## Keyboard Shortcuts
-
-### Default Shortcuts
-
-- `Cmd/Ctrl+Shift+R`: Create new reminder
-- `Cmd/Ctrl+Alt+R`: Create reminder from selection
-
-### Customizable Commands
-
-Configure these in **Settings → Hotkeys**:
-- Show reminder sidebar
-- Create new reminder
-- Create reminder from selection
-
-## Architecture
-
-### Data Model
-
-```typescript
-interface Reminder {
-    id: string;                    // Unique identifier
-    message: string;               // Reminder text
-    datetime: string;              // Due time (ISO string)
-    priority: 'low' | 'normal' | 'high' | 'urgent';
-    tags: string[];                // Organization tags (lowercase)
-    sourceNote?: string;           // Linked note path
-    sourceLine?: number;           // Linked line number
-    completed: boolean;            // Completion status
-    completedAt?: string;          // Completion timestamp
-    snoozedUntil?: string;        // Snooze end time
-    snoozeCount: number;          // Snooze tracking
-    notifiedAt?: string;          // First notification time
-    created: string;              // Creation timestamp
-    updated: string;              // Last update timestamp
-}
-```
-
-### Core Components
-
-- **ReminderDataManager**: Handles all CRUD operations and data persistence
-- **Scheduler**: Monitors reminders and triggers notifications with adaptive timing
-- **NotificationService**: Displays reminders through multiple channels
-- **ReminderSidebarView**: Main UI for viewing and managing reminders
-- **ReminderModal**: Comprehensive form for creating and editing reminders
-
-For detailed architecture documentation, see [CLAUDE.md](./CLAUDE.md).
-
-## Development
-
-### Prerequisites
-
-- Node.js 16+
-- npm or yarn
-- Obsidian (for testing)
-
-### Development Workflow
-
-```bash
-# Install dependencies
-npm install
-
-# Start development build with watch mode
-npm run dev
-
-# Run production build
-npm run build
-
-# Version bump (patch)
-npm run version
-
-# Create release (patch)
-npm run release
-
-# Create minor release
-npm run release:minor
-
-# Create major release
-npm run release:major
-```
-
-### Project Structure
-
-```
-src/
-├── main.ts                          # Plugin entry point
-├── view.ts                          # Sidebar view component
-├── types.ts                         # Shared type definitions
-├── constants.ts                     # Constants and configuration
-├── settings/
-│   └── index.ts                     # Settings interface
-├── managers/
-│   ├── reminderDataManager.ts       # Data layer
-│   ├── scheduler.ts                 # Timing & notifications
-│   └── notificationService.ts       # Display notifications
-├── modals/
-│   ├── reminderModal.ts             # Create/edit form
-│   ├── confirmDeleteModal.ts        # Delete confirmation
-│   └── snoozeSuggestModal.ts        # Snooze picker
-└── utils/
-    ├── dateUtils.ts                 # Date formatting utilities
-    ├── errorHandling.ts             # Error handling utilities
-    └── errorRecovery.ts             # Error recovery utilities
-```
-
-### Testing
-
-The plugin includes a comprehensive automated test suite:
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage report
-npm run test:coverage
-
-# Run specific test file
-npm test -- tests/unit/dateUtils.test.ts
-```
-
-**Test Coverage:**
-- 226 automated tests
-- ~60% overall code coverage
-- 100% coverage on critical utilities (dateUtils, constants)
-- 94% coverage on error handling
-- Comprehensive testing of core business logic
-
-**Test Suite Includes:**
-- ✅ Date utilities (41 tests, 100% coverage)
-- ✅ Type definitions and guards (21 tests, 71% coverage)
-- ✅ Reminder data manager (46 tests, 68% coverage)
-- ✅ Constants and configuration (54 tests, 100% coverage)
-- ✅ Error handling system (64 tests, 94% coverage)
-
-For detailed testing documentation, see [TESTING.md](./TESTING.md).
-
-**Manual Testing Checklist** (for UI components not covered by automated tests):
-
-- [ ] Create reminder with all field types
-- [ ] Edit existing reminder and verify non-destructive editing
-- [ ] Cancel reminder editing and verify data preservation
-- [ ] Test all filter views and advanced filtering
-- [ ] Verify notification triggering at correct times
-- [ ] Test snooze functionality with various durations
-- [ ] Test re-notification system
-- [ ] Test completion workflow (especially with snoozed reminders)
-- [ ] Test deletion with confirmation
-- [ ] Test note linking and line numbers
-- [ ] Test context menu integration
-- [ ] Test keyboard shortcuts
-- [ ] Test bulk operations
-- [ ] Test mobile responsiveness (if applicable)
-
-## Troubleshooting
-
-### Notifications Not Showing
-
-1. Check plugin settings: ensure notifications are enabled
-2. Verify browser/OS notification permissions for Obsidian
-3. Try both system and Obsidian notice types
-4. Check browser console for errors (enable debug logging)
-
-### Scheduler Not Working
-
-1. Enable debug logging in settings
-2. Check console for scheduler status
-3. Verify reminder datetime is in correct ISO format
-4. Ensure reminder is not already completed or far in the future
-
-### UI Not Updating
-
-1. Try manually refreshing the sidebar (refresh button)
-2. Check if reminder was saved successfully
-3. Look for JavaScript errors in console
-4. Restart Obsidian if issue persists
-
-### Performance Issues
-
-1. Check the number of reminders (very large numbers may slow UI)
-2. Adjust scheduler intervals in settings
-3. Clear completed reminders periodically
-4. Check for other plugin conflicts
-
-## Recent Updates
-
-### Version 1.0.0
-
-**New Features:**
-- **Multi-tag support**: Replaced single category with multiple tags (comma-separated input)
-- **Advanced filtering**: Filter by tags and/or priority with OR logic on "All" tab
-- **Interactive filter menu**: Click active "All" tab to open tag/priority filter dropdown
-- Re-notification system for overdue reminders with configurable intervals
-- Bulk delete functionality for managing multiple reminders
-- Expanded snooze interval options (30s to 24h)
-- Header button improvements for better UX
-
-**Improvements:**
-- **Case-insensitive tags**: All tags normalized to lowercase for consistency
-- **Visual filter indicators**: Chevron and filter-x icons show filter state
-- **Checkmark UI**: Selected filters show checkmarks for clarity
-- Migrated from moment.js to date-fns for better performance
-- Enhanced date validation with graceful error handling
-- Non-destructive editing in reminder modal
-- Fixed ellipsis menu positioning for keyboard activation
-- Improved error resilience across all components
-
-**Bug Fixes:**
-- Fixed re-notification blocking after first notification
-- Fixed "Invalid time value" errors when completing snoozed reminders
-- Fixed date validation edge cases
-- Improved scheduler timing precision
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
-### Guidelines
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Test thoroughly
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/gapmiss/reminders/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/gapmiss/reminders/discussions)
-- **Documentation**: [CLAUDE.md](./CLAUDE.md)
-
-## Acknowledgments
-
-- Built for [Obsidian.md](https://obsidian.md/)
-- Uses [date-fns](https://date-fns.org/) for date manipulation
-- Inspired by the Obsidian community's need for integrated reminder management
-
-## Roadmap
-
-Future enhancements under consideration:
-
-- Recurring reminders (daily, weekly, monthly patterns)
-- Reminder templates for common use cases
-- Full-text search capabilities
-- Export/import functionality
-- Integration with calendar plugins
-- Reminder dependencies and chains
-- Mobile app optimization
-- ✅ ~~Automated testing suite~~ (Complete - 226 tests)
+> Never miss a deadline, meeting, or important task again. A powerful, flexible reminder system that integrates seamlessly with your Obsidian workflow.
+
+[![GitHub release](https://img.shields.io/github/v/release/gapmiss/reminders?style=flat-square)](https://github.com/gapmiss/reminders/releases)
+[![License](https://img.shields.io/github/license/gapmiss/reminders?style=flat-square)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-226%20passing-brightgreen?style=flat-square)](tests/)
 
 ---
 
-**Author**: [@gapmiss](https://github.com/gapmiss)
+## ✨ What is Obsidian Reminders?
 
-**Version**: 1.0.0
+Obsidian Reminders is a comprehensive reminder management plugin for [Obsidian.md](https://obsidian.md) that brings time-based notifications directly into your note-taking workflow. Create reminders from your notes, organize them with tags and priorities, and receive notifications through multiple channels—all without leaving Obsidian.
 
-**Minimum Obsidian Version**: 1.1.0
+### Why Use This Plugin?
+
+- 🎯 **Context-Aware**: Create reminders from text selections and automatically link them to your notes
+- 🏷️ **Flexible Organization**: Use multiple tags and four priority levels to organize reminders your way
+- 🔔 **Reliable Notifications**: Dual notification system (system + in-app) ensures you never miss important reminders
+- ⚡ **Lightning Fast**: Built with performance in mind, with adaptive scheduling and efficient rendering
+- 🔍 **Advanced Filtering**: Powerful filtering system to find exactly what you need
+- 🎨 **Beautiful UI**: Clean, intuitive interface that fits naturally into Obsidian
+- 🔒 **Privacy First**: All data stored locally, no external services or tracking
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+#### From Obsidian (Recommended)
+
+1. Open **Settings** → **Community Plugins**
+2. Disable **Safe Mode** if needed
+3. Click **Browse** and search for **"Reminders"**
+4. Click **Install**, then **Enable**
+
+#### Manual Installation
+
+Download the [latest release](https://github.com/gapmiss/reminders/releases) and extract to `<vault>/.obsidian/plugins/reminders/`
+
+📖 **Detailed instructions:** [Installation Guide](docs/installation.md)
+
+### Your First Reminder
+
+1. Click the bell icon (🔔) in the left ribbon
+2. Fill in your reminder:
+   - **Message**: "Team standup meeting"
+   - **Time**: Tomorrow at 9:00 AM
+   - **Priority**: High
+   - **Tags**: work, meeting
+3. Click **Create Reminder**
+
+🎓 **Learn more:** [Quick Start Guide](docs/quick-start.md)
+
+---
+
+## 🎯 Key Features
+
+### Multiple Creation Methods
+
+- **Ribbon icon**: Single-click access
+- **Keyboard shortcuts**: `Cmd/Ctrl+Shift+R` to create, `Cmd/Ctrl+Alt+R` from selection
+- **Context menus**: Right-click in editor or file explorer
+- **Text selection**: Highlight text and create a reminder with automatic linking
+
+### Powerful Organization
+
+- **Multi-tag system**: Organize with multiple tags per reminder (e.g., "work, urgent, meeting")
+- **Priority levels**: 🔴 Urgent, 🟡 High, ⚪ Normal, 🔵 Low
+- **Advanced filtering**: Filter by tags and/or priority with OR logic
+- **Note linking**: Automatically link reminders to specific notes and line numbers
+
+### Smart Notifications
+
+- **Dual channels**: System notifications + Obsidian in-app notices
+- **Re-notifications**: Configurable intervals for overdue reminders (never miss critical tasks)
+- **Interactive actions**: Complete, snooze, or dismiss directly from notifications
+- **Precise timing**: Adaptive scheduler checks every 5-30 seconds for accuracy
+
+### Flexible Views
+
+- **Pending**: Overdue reminders needing attention
+- **Upcoming**: Future reminders on the horizon
+- **Snoozed**: Postponed reminders
+- **Done**: Completed reminders
+- **All**: Everything, with advanced tag/priority filtering
+
+### Time Management
+
+- **Smart snoozing**: Preset durations from 5 minutes to 24 hours
+- **Quick time buttons**: Set reminders for 1h, 2h, tomorrow, or next week with one click
+- **Relative time display**: See "in 2 hours" or "3 days ago" at a glance
+- **Bulk operations**: Delete all completed reminders at once
+
+📚 **Explore all features:** [Complete Feature List](docs/features.md)
+
+---
+
+## 📖 Documentation
+
+### For Users
+
+- **[Quick Start Guide](docs/quick-start.md)** - Get up and running in 5 minutes
+- **[User Guide](docs/user-guide.md)** - Complete usage documentation
+- **[Features](docs/features.md)** - Detailed feature explanations
+- **[Installation](docs/installation.md)** - Installation methods and troubleshooting
+- **[Troubleshooting](docs/troubleshooting.md)** - Solutions to common issues
+
+### For Developers
+
+- **[Developer Guide](docs/developer-guide.md)** - Architecture, APIs, and contributing
+- **[CLAUDE.md](CLAUDE.md)** - Internal architecture documentation
+- **[CHANGELOG](docs/CHANGELOG.md)** - Version history and release notes
+
+---
+
+## ⚡ At a Glance
+
+### Creating Reminders
+
+```
+📝 From text selection
+Select "Call dentist tomorrow" → Cmd/Ctrl+Alt+R → Reminder created with context
+
+🎯 From file explorer
+Right-click note → "Create reminder for this note" → Linked reminder
+
+⌨️ From keyboard
+Cmd/Ctrl+Shift+R → Quick creation modal
+```
+
+### Managing Reminders
+
+```
+✓ Complete: Click checkbox or notification button
+⏰ Snooze: Choose from presets or custom duration
+✏️ Edit: Change any field, non-destructive editing
+🗑️ Delete: With confirmation to prevent accidents
+```
+
+### Organizing Reminders
+
+```
+🏷️ Tags: work, urgent, meeting, personal
+⚡ Priorities: Urgent, High, Normal, Low
+🔍 Filters: Combine tags and priorities with OR logic
+📊 Statistics: Real-time counts of all reminder states
+```
+
+---
+
+## 🎓 Usage Examples
+
+### Daily Task Management
+
+Create a reminder from your daily note:
+```markdown
+1. Review pull requests
+2. Team standup at 9 AM ← Select this text
+3. Lunch with client at 12 PM
+```
+Select text → `Cmd/Ctrl+Alt+R` → Set time → Tagged with "work, meeting"
+
+### Project Deadlines
+
+1. Right-click project note in file explorer
+2. "Create reminder for this note"
+3. Set deadline with Urgent priority
+4. Tag with project name
+5. Enable re-notifications every 2 hours
+
+### Weekly Review
+
+Filter view:
+1. Switch to "All" tab
+2. Click "All" again to open filters
+3. Select "work" tag + High priority
+4. Review and update as needed
+
+---
+
+## ⚙️ Settings
+
+Access via **Settings → Reminders**
+
+### Notification Options
+
+- **System Notifications**: OS-level notifications (recommended: ON)
+- **Obsidian Notices**: In-app popups (recommended: ON)
+- **Re-notification Interval**: How often to re-alert for overdue reminders
+
+### Defaults
+
+- **Default Priority**: Priority level for new reminders (Normal, Low, High, Urgent)
+
+### Debug
+
+- **Debug Mode**: Enable console logging for troubleshooting
+
+---
+
+## 🎨 Screenshots
+
+### Sidebar View with Filters
+```
+┌─────────────────────────────────────┐
+│ 🔔 Reminders              [⋯] [↻] │
+├─────────────────────────────────────┤
+│ 📊 Statistics                       │
+│ • 3 pending • 5 upcoming            │
+│ • 2 snoozed • 12 completed          │
+├─────────────────────────────────────┤
+│ [Pending] [Upcoming] [Done] [All▼] │
+├─────────────────────────────────────┤
+│ ☐ Team standup meeting              │
+│   Tomorrow at 9:00 AM (in 14h)      │
+│   🏷️ work • meeting  ⚡ high       │
+│   [...] Edit • Snooze • Delete      │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 🧪 Testing
+
+This plugin includes a comprehensive automated test suite:
+
+```bash
+# Run all tests (226 tests)
+npm test
+
+# Run tests with coverage (~60% overall)
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+**Coverage highlights:**
+- ✅ 100% coverage on date utilities and constants
+- ✅ 94% coverage on error handling
+- ✅ 68% coverage on data manager
+- ✅ Comprehensive testing of business logic
+
+Manual testing checklist available in [User Guide](docs/user-guide.md#manual-testing-checklist).
+
+---
+
+## 🗺️ Roadmap
+
+### Coming Soon (v1.1.0)
+
+- 🔄 Recurring reminders (daily, weekly, monthly)
+- 📋 Reminder templates
+- 📆 Calendar view integration
+- 🗣️ Natural language date input
+
+### Under Consideration
+
+- 🔍 Full-text search
+- 📤 Export/import functionality
+- 🔗 Reminder dependencies and chains
+- 📱 Enhanced mobile support
+- 🌐 Integration with calendar plugins
+
+### Completed
+
+- ✅ Multi-tag support
+- ✅ Advanced filtering system
+- ✅ Re-notification system
+- ✅ Comprehensive test suite (226 tests)
+- ✅ Bulk operations
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's:
+
+- 🐛 Bug reports
+- 💡 Feature requests
+- 📝 Documentation improvements
+- 💻 Code contributions
+- 🎨 UI/UX suggestions
+
+**Get started:**
+
+1. Read the [Developer Guide](docs/developer-guide.md)
+2. Check [existing issues](https://github.com/gapmiss/reminders/issues)
+3. Fork, create a feature branch, and submit a PR
+
+**Development setup:**
+
+```bash
+git clone https://github.com/YOUR_USERNAME/reminders.git
+cd reminders
+npm install
+npm run dev  # Watch mode
+```
+
+📖 **Full details:** [Developer Guide](docs/developer-guide.md#contributing)
+
+---
+
+## 📊 Project Stats
+
+- **226** automated tests
+- **~60%** code coverage
+- **1.0.0** current version
+- **MIT** licensed
+- **TypeScript** + **date-fns** + **Vitest**
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Notifications not showing?**
+- Check Settings → Reminders → Enable both notification types
+- Verify OS notification permissions for Obsidian
+- [Full troubleshooting guide](docs/troubleshooting.md#notification-problems)
+
+**Reminders not triggering?**
+- Enable debug mode and check console
+- Verify datetime is in the future
+- [Scheduler troubleshooting](docs/troubleshooting.md#scheduler-issues)
+
+**UI not updating?**
+- Click the refresh button (↻) in sidebar
+- Toggle plugin off/on in settings
+- [UI troubleshooting](docs/troubleshooting.md#ui-problems)
+
+📖 **More help:** [Complete Troubleshooting Guide](docs/troubleshooting.md)
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built for [Obsidian.md](https://obsidian.md/)
+- Powered by [date-fns](https://date-fns.org/) for reliable date handling
+- Tested with [Vitest](https://vitest.dev/)
+- Inspired by the Obsidian community's need for integrated reminder management
+
+---
+
+## 📞 Support & Community
+
+- **🐛 Bug Reports**: [GitHub Issues](https://github.com/gapmiss/reminders/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/gapmiss/reminders/discussions)
+- **📖 Documentation**: [docs/](docs/)
+- **📧 Contact**: [@gapmiss](https://github.com/gapmiss)
+
+---
+
+## ⭐ Show Your Support
+
+If you find this plugin useful, please:
+
+- ⭐ Star this repository
+- 🐛 Report bugs and suggest features
+- 📢 Share with other Obsidian users
+- 💖 Consider [sponsoring development](https://github.com/sponsors/gapmiss)
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Obsidian community**
+
+[Documentation](docs/) • [Issues](https://github.com/gapmiss/reminders/issues) • [Discussions](https://github.com/gapmiss/reminders/discussions) • [Changelog](docs/CHANGELOG.md)
+
+</div>
